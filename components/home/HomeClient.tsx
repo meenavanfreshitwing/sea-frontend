@@ -1,17 +1,24 @@
 // components/home/HomeClient.tsx
 'use client';
 
-import { Truck, Shield, Minus, Plus, Calendar, AlarmClock } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { Truck, Shield, Minus, Plus, Calendar } from 'lucide-react';
+import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Category } from '@/types/category';
 import ProductGrid from '@/components/products/ProductGrid';
 import { getAllProducts } from '@/lib/productService';
-import TestimonialsSection from '@/components/Testimonial';
+import HomeReviews from '@/components/reviews/HomeReviews';
 import HomeHeroBanner from '@/components/HomeHeroBanner';
 import CategoryCarousel from '@/components/home/Carousal';
+import DeliveryBar from '@/components/home/DeliveryBar';
 import HeroSection from '@/components/herosection';
+import HowToOrder from '@/components/home/HowToOrder';
+import { getBookingAvailability, formatCutoffTime } from '@/lib/booking-api';
+import type { BookingAvailability } from '@/types/booking';
+import { useLanguage } from '@/context/LanguageContext';
+
+const HOME_FISH_LIMIT = 12;
 
 interface HomeClientProps {
   categories: Category[];
@@ -19,215 +26,81 @@ interface HomeClientProps {
 }
 
 export default function HomeClient({ categories, featuredCategories }: HomeClientProps) {
-  const router = useRouter();
+  const { t } = useLanguage();
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   
-  const [categoriesWithProducts, setCategoriesWithProducts] = useState<string[]>([]);
-  const [checkingProducts, setCheckingProducts] = useState(true);
-
-  // Get tomorrow's date for display
-  const getTomorrowDate = () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  };
+  // All fish together in one grid (count decides the empty message and "View all")
+  const [fishCount, setFishCount] = useState<number | null>(null);
+  const [booking, setBooking] = useState<BookingAvailability | null>(null);
 
   useEffect(() => {
-    const checkCategoriesForProducts = async () => {
-      try {
-        setCheckingProducts(true);
-        const categoriesWithProductsList: string[] = [];
-        
-        for (const category of categories) {
-          const response = await getAllProducts({ category: category.slug });
-          if (response.data && response.data.length > 0) {
-            categoriesWithProductsList.push(category._id);
-          }
-        }
-        
-        setCategoriesWithProducts(categoriesWithProductsList);
-      } catch (error) {
-        console.error('Error checking categories for products:', error);
-      } finally {
-        setCheckingProducts(false);
-      }
-    };
+    getBookingAvailability().then(setBooking).catch(() => setBooking(null));
+  }, []);
 
-    if (categories.length > 0) {
-      checkCategoriesForProducts();
-    }
-  }, [categories]);
 
-  const faqItems = [
-    {
-      question: "How fresh is the sea fish you deliver?",
-      answer: "Our sea fish is sourced daily from local fishermen and packed with ice. We ensure next-day delivery for maximum freshness. Order today, get fresh catch delivered tomorrow!"
-    },
-    {
-      question: "When will I receive my order?",
-      answer: `We follow a next-day delivery policy. Orders placed today will be delivered tomorrow (${getTomorrowDate()}). This ensures you receive the freshest catch possible.`
-    },
-{
-  question: "Is the fish cleaned and cut before delivery?",
-  answer: "No, we do not clean or cut the fish before delivery. We deliver fresh whole fish so you receive it in its natural, unprocessed form."
-},
-    {
-      question: "How should I store the fresh fish?",
-      answer: "Store in refrigerator and consume within 24 hours for best taste. For longer storage, keep in freezer up to 2 weeks."
-    },
-    {
-      question: "Do you deliver to all locations?",
-      answer: "We currently deliver to major cities and towns. Check your pincode on our delivery page for service availability."
-    },
-    {
-      question: "Do you offer bulk orders for restaurants?",
-      answer: "Yes, we provide bulk ordering options for restaurants, hotels, and MeenavanFresh businesses. Contact us for wholesale pricing."
-    },
-    {
-      question: "What is your delivery policy?",
-      answer: "We operate on a next-day delivery model. All orders placed today are prepared fresh and delivered tomorrow. Cutoff time for same-day processing is 8:00 PM. Orders placed after cutoff will be delivered the day after tomorrow."
-    }
-  ];
+  useEffect(() => {
+    getAllProducts({})
+      .then(res => setFishCount(res.data?.length || 0))
+      .catch(() => setFishCount(0));
+  }, []);
+
+  // Plain-language answers; cutoff time follows the admin's booking rules
+  const cutoffLabel = booking ? formatCutoffTime(booking.config.cutoffTime) : '5:00 PM';
+  const faqItems = ([1, 2, 3, 4, 5, 6, 7, 8] as const).map(n => ({
+    question: t(`faq.q${n}`),
+    answer: t(`faq.a${n}`, { time: cutoffLabel }),
+  }));
 
   const toggleFaq = (index: number) => {
     setOpenFaqIndex(openFaqIndex === index ? null : index);
   };
 
-  const visibleCategories = categories.filter(
-    category => categoriesWithProducts.includes(category._id)
-  );
-
   return (
     <div className="min-h-screen overflow-hidden">
+      {/* When the fish arrives – first thing customers see */}
+      <DeliveryBar />
+
+      <HeroSection />
+
       {categories && categories.length > 0 && (
         <CategoryCarousel displayCategories={categories} />
       )}
 
-      {/* Delivery Info Banner - Order Today, Get Tomorrow */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="bg-gradient-to-r from-[#064B6A] via-[#065A7A] to-[#008FB8] text-white py-2 sm:py-3 px-2 sm:px-4 relative overflow-hidden"
-      >
-        <div className="container mx-auto">
-          <div className="grid grid-cols-2 sm:flex sm:flex-row items-center justify-center gap-0 sm:gap-6 text-center">
+      <div id="todays-catch" className="scroll-mt-24" />
 
-            {/* Order Today */}
-            <div className="flex items-center justify-center gap-1 sm:gap-2 px-1.5 sm:px-0 min-w-0">
-              <Calendar className="w-3.5 h-3.5 sm:w-5 sm:h-5 shrink-0 animate-pulse" />
-              <span className="font-semibold text-[9px] leading-[13px] sm:text-sm sm:leading-normal md:text-base">
-                Order Today • Get Tomorrow ({getTomorrowDate()})
-              </span>
-            </div>
-
-            {/* Divider */}
-            <div className="hidden sm:block w-px h-6 bg-white/30"></div>
-
-            {/* Mobile Divider */}
-            <div className="sm:hidden absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-px h-8 bg-white/30"></div>
-
-            {/* Cutoff */}
-            <div className="flex items-center justify-center gap-1 sm:gap-2 px-1.5 sm:px-0 min-w-0">
-              <AlarmClock className="w-3.5 h-3.5 sm:w-5 sm:h-5 shrink-0" />
-              <span className="text-[9px] leading-[13px] sm:text-sm sm:leading-normal md:text-base">
-                Cutoff: 8:00 PM for next-day delivery
-              </span>
-            </div>
-
-          </div>
-        </div>
-
-        {/* Shimmer */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -inset-10 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-[shimmer_2s_infinite] transform -skew-x-12"></div>
-        </div>
-      </motion.div>
-
-      {/* Hero Section Component */}
-      <HeroSection />
-
-      {/* Explore Products Section */}
-      {!checkingProducts && visibleCategories.length > 0 && (
-        <motion.section 
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="py-6 sm:py-8"
-        >
+      {/* Today's catch: every fish in one grid */}
+      {fishCount !== null && fishCount > 0 && (
+        <section className="py-6 sm:py-10">
           <div className="container mx-auto px-1 sm:px-2">
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2 }}
-              className="text-center mb-6 sm:mb-8 px-2"
-            >
-   <h2 className="text-lg xs:text-xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-3 animate-gradient-text">
-  Explore Our MeenavanFresh Collection
-</h2>
-              <motion.p 
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.3 }}
-                className="max-w-2xl mx-auto text-sm sm:text-base text-[#315A6E]"
-              >
-                Discover premium quality sea fish, fresh from the harbour to your kitchen
-              </motion.p>
-            </motion.div>
-
-            <div className="space-y-8 sm:space-y-12">
-              {visibleCategories.map((category, index) => (
-                <motion.div 
-                  key={category._id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1, duration: 0.6 }}
-                >
-                  <div className="mb-4 sm:mb-6 px-2 sm:px-4">
-                    <div className="flex flex-col items-center justify-center text-center mb-3 sm:mb-4">
-                      <motion.h3 
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        whileInView={{ opacity: 1, scale: 1 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: index * 0.1, type: "spring", stiffness: 200 }}
-                        className="text-xl sm:text-2xl md:text-3xl font-bold text-[#063B5C]"
-                      >
-                        {category.name}
-                      </motion.h3>
-                    </div>
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      whileInView={{ width: 80 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: index * 0.1 + 0.2, duration: 0.5 }}
-                      className="flex justify-center"
-                    >
-                      <div className="h-1 rounded-full" style={{ backgroundColor: '#008FB8', width: '80px' }}></div>
-                    </motion.div>
-                  </div>
-                  <ProductGrid category={category.slug} limit={8} hideFilters={true} />
-                </motion.div>
-              ))}
+            <div className="mb-6 px-2 text-center sm:mb-8">
+              <h2 className="mb-2 text-2xl font-bold animate-gradient-text sm:mb-3 sm:text-3xl md:text-4xl">
+                {t('home.catchTitle')}
+              </h2>
+              <p className="mx-auto max-w-2xl text-sm text-[#315A6E] sm:text-base">{t('home.catchSubtitle')}</p>
             </div>
+
+            <ProductGrid limit={HOME_FISH_LIMIT} hideFilters={true} />
+
+            {fishCount > HOME_FISH_LIMIT && (
+              <div className="mt-6 flex justify-center sm:mt-8">
+                <Link
+                  href="/products"
+                  className="inline-flex min-h-[48px] items-center gap-2 rounded-xl border-2 border-[#063B5C] px-6 font-bold text-[#063B5C] transition hover:bg-[#063B5C] hover:text-white"
+                >
+                  {t('home.viewAll', { n: fishCount })} →
+                </Link>
+              </div>
+            )}
           </div>
-        </motion.section>
+        </section>
       )}
 
-      {!checkingProducts && visibleCategories.length === 0 && (
-        <motion.section 
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          className="py-6 sm:py-8"
-        >
+      {fishCount === 0 && (
+        <section className="py-6 sm:py-8">
           <div className="container mx-auto px-4 text-center">
-            <p className="text-sm sm:text-base text-[#315A6E]/60">No MeenavanFresh available at the moment. Please check back later.</p>
+            <p className="text-sm sm:text-base text-[#315A6E]/60">{t('home.noFish')}</p>
           </div>
-        </motion.section>
+        </section>
       )}
 
       <motion.div 
@@ -239,6 +112,8 @@ export default function HomeClient({ categories, featuredCategories }: HomeClien
       >
         <HomeHeroBanner />
       </motion.div>
+
+      <HowToOrder />
 
       {/* Why Choose Us Section */}
       <motion.section 
@@ -257,7 +132,7 @@ export default function HomeClient({ categories, featuredCategories }: HomeClien
             className="text-center mb-6 sm:mb-12"
           >
             <h2 className="text-xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-4 tracking-tight animate-gradient-text">
-              Why Choose Our MeenavanFresh
+              {t('home.whyTitle')}
             </h2>
             <motion.div 
               initial={{ width: 0 }}
@@ -274,15 +149,15 @@ export default function HomeClient({ categories, featuredCategories }: HomeClien
               transition={{ delay: 0.4 }}
               className="max-w-2xl mx-auto text-xs sm:text-base md:text-lg text-[#315A6E] px-2 sm:px-0"
             >
-              Trusted quality MeenavanFresh sourced directly from local fishermen
+              {t('home.whySubtitle')}
             </motion.p>
           </motion.div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-8 max-w-6xl mx-auto">
             {[
-              { icon: Calendar, title: 'Next-Day Delivery', desc: 'Order today, get fresh MeenavanFresh delivered tomorrow. Guaranteed same-day dispatch.', highlight: 'Tomorrow Delivery' },
-              { icon: Truck, title: 'Fast & Safe Delivery', desc: 'Quick and safe delivery with ice packing to your doorstep.', highlight: 'Ice Packed' },
-              { icon: Shield, title: 'Premium Quality', desc: '100% Fresh MeenavanFresh sourced directly from harbour daily.', highlight: 'Certified Fresh' },
+              { icon: Calendar, title: t('home.feature1.title'), desc: t('home.feature1.desc'), highlight: t('home.feature1.tag') },
+              { icon: Truck, title: t('home.feature2.title'), desc: t('home.feature2.desc'), highlight: t('home.feature2.tag') },
+              { icon: Shield, title: t('home.feature3.title'), desc: t('home.feature3.desc'), highlight: t('home.feature3.tag') },
             ].map((feature, idx) => (
               <motion.div 
                 key={idx}
@@ -317,15 +192,8 @@ export default function HomeClient({ categories, featuredCategories }: HomeClien
         </div>
       </motion.section>
       
-      {/* Testimonials Section */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.6 }}
-      >
-        <TestimonialsSection />
-      </motion.div>
+      {/* Real customer reviews (verified purchases) */}
+      <HomeReviews />
 
       {/* FAQ Section */}
       <motion.section 
@@ -344,7 +212,7 @@ export default function HomeClient({ categories, featuredCategories }: HomeClien
             className="text-center mb-6 sm:mb-10"
           >
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-3 animate-gradient-text">
-              Frequently Asked Questions
+              {t('faq.title')}
             </h2>
             <motion.p 
               initial={{ opacity: 0 }}
@@ -353,7 +221,7 @@ export default function HomeClient({ categories, featuredCategories }: HomeClien
               transition={{ delay: 0.3 }}
               className="max-w-2xl mx-auto text-xs sm:text-base text-[#315A6E]"
             >
-              Find answers to common questions about our fresh MeenavanFresh
+              {t('faq.subtitle')}
             </motion.p>
           </motion.div>
 
@@ -371,7 +239,7 @@ export default function HomeClient({ categories, featuredCategories }: HomeClien
                   className="w-full px-4 sm:px-6 py-3 sm:py-4 text-left flex justify-between items-center gap-2 transition-colors duration-300 hover:bg-[#F8FCFD]" 
                   onClick={() => toggleFaq(index)}
                 >
-                  <span className="font-semibold text-sm sm:text-lg text-[#063B5C] leading-snug">{faq.question}</span>
+                  <span className="font-semibold text-base sm:text-lg text-[#063B5C] leading-snug">{faq.question}</span>
                   <motion.span 
                     animate={{ rotate: openFaqIndex === index ? 180 : 0 }}
                     transition={{ duration: 0.3 }}
@@ -391,7 +259,7 @@ export default function HomeClient({ categories, featuredCategories }: HomeClien
                   className="overflow-hidden"
                 >
                   <div className="px-4 sm:px-6 pb-3 sm:pb-4">
-                    <p className="text-xs sm:text-base leading-relaxed text-[#315A6E]">{faq.answer}</p>
+                    <p className="text-[15px] sm:text-base leading-relaxed text-[#315A6E]">{faq.answer}</p>
                   </div>
                 </motion.div>
               </motion.div>

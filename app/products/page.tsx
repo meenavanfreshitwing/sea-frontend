@@ -17,7 +17,7 @@ export default async function ProductsPage(props: ProductsPageProps) {
     <div className="min-h-screen bg-white">
       <section className="py-12">
         <div className="container mx-auto px-4">
-          <h1 className="sr-only">Farm Tools Collection - Hand Sickles, Harvesting Knives & Coconut Scrapers</h1>
+          <h1 className="sr-only">Fresh sea fish from Karaikudi and Pudukkottai</h1>
           <ProductGrid category={selectedCategory} />
         </div>
       </section>

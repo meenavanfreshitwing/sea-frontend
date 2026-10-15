@@ -14,7 +14,7 @@ export async function generateMetadata(props: ProductDetailPageProps): Promise<M
   
   if (!slug) {
     return {
-      title: 'Product Not Found | Organic Store',
+      title: 'Product Not Found | Meenavan Fresh',
       description: 'The requested product could not be found.',
     };
   }
@@ -24,13 +24,13 @@ export async function generateMetadata(props: ProductDetailPageProps): Promise<M
     
     if (!product) {
       return {
-        title: 'Product Not Found | Organic Store',
+        title: 'Product Not Found | Meenavan Fresh',
         description: 'The requested product could not be found.',
       };
     }
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://example.com';
-    const storeName = process.env.NEXT_PUBLIC_SITE_NAME || 'Organic Store';
+    const storeName = process.env.NEXT_PUBLIC_SITE_NAME || 'Meenavan Fresh';
     
     return {
       title: `${product.name} | ${storeName}`,
@@ -44,7 +44,7 @@ export async function generateMetadata(props: ProductDetailPageProps): Promise<M
   } catch (error) {
     console.error('Error generating metadata:', error);
     return {
-      title: 'Product Details | Organic Store',
+      title: 'Product Details | Meenavan Fresh',
       description: 'View detailed information about our premium organic products.',
     };
   }

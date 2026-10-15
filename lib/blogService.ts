@@ -15,7 +15,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 class BlogService {
   private getAuthHeaders(): HeadersInit {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('otp_auth_token');
     return {
       'Authorization': token ? `Bearer ${token}` : '',
       'Content-Type': 'application/json',
@@ -23,7 +23,7 @@ class BlogService {
   }
 
   private getMultipartHeaders(): HeadersInit {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('otp_auth_token');
     return {
       'Authorization': token ? `Bearer ${token}` : '',
       // Let browser set Content-Type for FormData
@@ -76,7 +76,7 @@ class BlogService {
         form.append('ogImage', formData.ogImage);
       }
 
-      const response = await fetch(`${API_BASE_URL}/blogs`, {
+      const response = await fetch(`${API_BASE_URL}/api/blogs`, {
         method: 'POST',
         headers: this.getMultipartHeaders(),
         body: form,
@@ -143,7 +143,7 @@ class BlogService {
         form.append('ogImage', formData.ogImage);
       }
 
-      const response = await fetch(`${API_BASE_URL}/blogs/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/blogs/${id}`, {
         method: 'PUT',
         headers: this.getMultipartHeaders(),
         body: form,
@@ -175,7 +175,7 @@ class BlogService {
         });
       }
 
-      const response = await fetch(`${API_BASE_URL}/blogs?${queryParams}`, {
+      const response = await fetch(`${API_BASE_URL}/api/blogs?${queryParams}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -198,7 +198,7 @@ class BlogService {
   // Get blog by slug
   async getBlogBySlug(slug: string): Promise<BlogResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/blogs/${slug}`, {
+      const response = await fetch(`${API_BASE_URL}/api/blogs/${slug}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -221,7 +221,7 @@ class BlogService {
   // Get blog by ID
   async getBlogById(id: string): Promise<BlogResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/blogs/id/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/blogs/id/${id}`, {
         method: 'GET',
         headers: this.getAuthHeaders(),
       });
@@ -242,7 +242,7 @@ class BlogService {
   // Delete blog
   async deleteBlog(id: string): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await fetch(`${API_BASE_URL}/blogs/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/blogs/${id}`, {
         method: 'DELETE',
         headers: this.getAuthHeaders(),
       });
@@ -263,7 +263,7 @@ class BlogService {
   // Like/Unlike blog
   async toggleLike(blogId: string): Promise<LikeResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/blogs/${blogId}/like`, {
+      const response = await fetch(`${API_BASE_URL}/api/blogs/${blogId}/like`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
       });
@@ -284,7 +284,7 @@ class BlogService {
   // Get blog categories
   async getCategories(): Promise<CategoriesResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/blogs/categories`, {
+      const response = await fetch(`${API_BASE_URL}/api/blogs/categories`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -307,7 +307,7 @@ class BlogService {
   // Get blog tags with counts
   async getTags(): Promise<TagsResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/blogs/tags`, {
+      const response = await fetch(`${API_BASE_URL}/api/blogs/tags`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -335,7 +335,7 @@ class BlogService {
         queryParams.append('limit', limit.toString());
       }
 
-      const response = await fetch(`${API_BASE_URL}/blogs/${blogId}/related?${queryParams}`, {
+      const response = await fetch(`${API_BASE_URL}/api/blogs/${blogId}/related?${queryParams}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

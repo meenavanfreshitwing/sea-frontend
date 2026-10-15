@@ -26,6 +26,8 @@ export interface Cart {
   totalItems: number;
   totalOriginalPrice?: number;
   totalSavings?: number;
+  /** Items the server removed because their fish/pack no longer exists */
+  removedItems?: string[];
   createdAt: string;
   updatedAt: string;
 }

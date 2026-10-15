@@ -205,7 +205,8 @@ export async function cancelOrder(orderId: string, cancellationReason?: string):
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || 'Failed to cancel order');
+      // code 'NOT_CANCELLABLE' = the shop already started packing / it is out for delivery
+      throw Object.assign(new Error(error.message || 'Failed to cancel order'), { code: error.code as string | undefined });
     }
 
     const data = await response.json();

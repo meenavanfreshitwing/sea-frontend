@@ -3,8 +3,12 @@ import { Product } from '@/types/product';
 import { useState } from 'react';
 import { useCart } from '@/context/CartContext';
 import { useRouter } from 'next/navigation';
-import { ShoppingBag } from 'lucide-react';
+import { ShoppingBag, Zap } from 'lucide-react';
 import Image from 'next/image';
+import { Stars } from '@/components/reviews/StarRating';
+import { useLanguage } from '@/context/LanguageContext';
+import { formatWeight } from '@/lib/weight';
+
 
 interface ProductCardProps {
   product: Product;
@@ -94,6 +98,9 @@ const getProductWeight = (product: Product): { weight: number; weightUnit: strin
   return null;
 };
 
+// '500 gram' -> '500 g', '1000 gram' -> '1 kg', '2 piece' -> '2 pcs'
+const shortWeight = (info: { weight: number; weightUnit: string }) => formatWeight(info.weight, info.weightUnit);
+
 // Get product image
 const getProductImage = (product: Product) => {
   const imgBaseUrl = process.env.NEXT_PUBLIC_IMG_URL;
@@ -126,7 +133,7 @@ const getProductImage = (product: Product) => {
     return `${imgBaseUrl}/${cleanPath}`;
   }
   
-  return '/placeholder-image.jpg';
+  return '/no-photo.svg';
 };
 
 export default function ProductCard({ product }: ProductCardProps) {
@@ -153,6 +160,24 @@ export default function ProductCard({ product }: ProductCardProps) {
     router.push(`/products/${product.slug}`);
   };
 
+  // The pack shown on the card (its price and weight) is the one bought from here
+  const defaultVariant = product.variants?.find(v => v.isDefault) || product.variants?.[0];
+
+  // Buy Now: straight to checkout with just this fish (1 pack); checkout asks guests to log in
+  const handleBuyNow = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isOutOfStock) return;
+    sessionStorage.setItem('buyNowItem', JSON.stringify({
+      product,
+      quantity: 1,
+      selectedVariant: defaultVariant,
+      price: defaultVariant ? defaultVariant.price : product.basePrice,
+      productName: product.name,
+      variantName: defaultVariant?.variantName || defaultVariant?.name || null,
+    }));
+    router.push('/checkout?buyNow=true');
+  };
+
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (isAddingToCart) return;
@@ -162,7 +187,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       
       const displayedImageUrl = imageUrl;
       let imageFilename = '';
-      if (displayedImageUrl && displayedImageUrl !== '/placeholder-image.jpg') {
+      if (displayedImageUrl && displayedImageUrl !== '/no-photo.svg') {
         imageFilename = displayedImageUrl.split('/').pop() || '';
       }
       
@@ -171,7 +196,6 @@ export default function ProductCard({ product }: ProductCardProps) {
         images: [{ image: imageFilename }]
       };
       
-      const defaultVariant = product.variants?.[0];
       await addToCart(productWithImage, 1, defaultVariant);
     } catch (error) {
       console.error('Failed to add product to cart:', error);
@@ -179,6 +203,9 @@ export default function ProductCard({ product }: ProductCardProps) {
       setIsAddingToCart(false);
     }
   };
+
+  const categoryName = typeof product.category === 'object' && product.category ? product.category.name : '';
+  const { t } = useLanguage();
 
   return (
     <div
@@ -199,15 +226,21 @@ export default function ProductCard({ product }: ProductCardProps) {
           />
         </div>
 
+        {isOutOfStock && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60">
+            <span className="rounded-full bg-[#063B5C] px-3 py-1 text-xs font-bold text-white sm:text-sm">{t('product.soldOut')}</span>
+          </div>
+        )}
+
         {imageError && (
           <div className="absolute inset-0 flex items-center justify-center bg-[#EAF8FC]">
-            <span className="text-[#315A6E]/60 text-xs sm:text-sm">No Image</span>
+            <span className="text-[#315A6E]/60 text-xs sm:text-sm">{t('product.noImage')}</span>
           </div>
         )}
 
         {/* IN CART BADGE */}
         {isInCart && (
-          <div className="absolute top-2 sm:top-3 right-2 sm:right-3 z-20 rounded-full w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 flex items-center justify-center text-[10px] sm:text-xs md:text-sm font-bold shadow-lg" style={{ backgroundColor: "#063B5C", color: "#00A9E0" }}>
+          <div className="absolute top-2 sm:top-3 right-2 sm:right-3 z-20 rounded-full w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 flex items-center justify-center text-[12px] sm:text-xs md:text-sm font-bold shadow-lg" style={{ backgroundColor: "#063B5C", color: "#00A9E0" }}>
             ✓
           </div>
         )}
@@ -216,14 +249,23 @@ export default function ProductCard({ product }: ProductCardProps) {
 {/* CONTENT SECTION - OPTIMIZED FOR MOBILE */}
 <div className="px-2.5 xs:px-3 sm:px-4 md:px-5 py-2.5 xs:py-3 sm:py-4 md:py-5">
   {/* Category/Weight */}
-  <p className="text-[7px] xs:text-[8px] sm:text-[9px] md:text-[10px] lg:text-[11px] font-bold text-[#315A6E]/70 uppercase tracking-[0.12em] xs:tracking-[0.15em] sm:tracking-[0.2em] mb-0.5 xs:mb-0.5 sm:mb-1">
-    {weightInfo ? `Net Weight • ${weightInfo.weight} ${weightInfo.weightUnit}` : 'Essentials'}
-  </p>
+  {(weightInfo || categoryName) && (
+    <p className="text-[12px] sm:text-[13px] font-semibold text-[#315A6E] mb-1">
+      {weightInfo ? t('product.netWeight', { weight: shortWeight(weightInfo) }) : categoryName}
+    </p>
+  )}
 
-  {/* PRODUCT NAME - Single line on all devices */}
-  <h3 className="text-[13px] xs:text-[14px] sm:text-[15px] md:text-[17px] lg:text-[18px] xl:text-[19px] font-semibold text-[#063B5C] tracking-tight leading-tight mb-1.5 xs:mb-2 sm:mb-3 md:mb-4 group-hover:text-[#008FB8] transition-colors truncate">
+  {/* PRODUCT NAME - up to two lines so long fish names stay readable */}
+  <h3 className="text-[13px] xs:text-[14px] sm:text-[15px] md:text-[17px] lg:text-[18px] xl:text-[19px] font-semibold text-[#063B5C] tracking-tight leading-tight mb-1.5 xs:mb-2 sm:mb-3 md:mb-4 group-hover:text-[#008FB8] transition-colors line-clamp-2">
     {product.name}
   </h3>
+
+  {(product.numberOfReviews ?? 0) > 0 && (
+    <div className="-mt-1 mb-2 flex items-center gap-1 text-[12px] text-[#315A6E]">
+      <Stars value={product.rating ?? 0} size={13} />
+      <span>({product.numberOfReviews})</span>
+    </div>
+  )}
 
   {/* Mobile: Stock & Price in Same Row */}
   <div className="flex flex-wrap items-center justify-between gap-1.5 xs:gap-2 mb-1.5 xs:mb-2 sm:mb-3 md:hidden">
@@ -232,12 +274,12 @@ export default function ProductCard({ product }: ProductCardProps) {
       {!isOutOfStock ? (
         <div className="flex items-center gap-1 text-xs font-medium" style={{ color: '#008FB8' }}>
           <span className="w-1 h-1 xs:w-1 xs:h-1 sm:w-1.5 sm:h-1.5 rounded-full animate-pulse" style={{ backgroundColor: '#008FB8' }}></span>
-          <span className="text-[9px] xs:text-[10px] sm:text-[11px] md:text-[12px] whitespace-nowrap">In Stock</span>
+          <span className="text-[12px] md:text-[12px] whitespace-nowrap">{t('product.inStock')}</span>
         </div>
       ) : (
         <div className="flex items-center gap-1 text-red-600 text-xs font-medium">
           <span className="w-1 h-1 xs:w-1 xs:h-1 sm:w-1.5 sm:h-1.5 bg-red-500 rounded-full"></span>
-          <span className="text-[9px] xs:text-[10px] sm:text-[11px] md:text-[12px] whitespace-nowrap">Out of Stock</span>
+          <span className="text-[12px] md:text-[12px] whitespace-nowrap">{t('product.soldOut')}</span>
         </div>
       )}
     </div>
@@ -245,13 +287,16 @@ export default function ProductCard({ product }: ProductCardProps) {
     {/* Price */}
     <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 flex-wrap">
       {hasValidOffer && (
-        <span className="text-[#315A6E]/50 line-through text-[8px] xs:text-[9px] sm:text-[10px] md:text-[11px] font-medium">
+        <span className="text-[#315A6E]/50 line-through text-[12px] font-medium">
           ₹{formatPrice(offerInfo.originalPrice)}
         </span>
       )}
       <span className="text-sm xs:text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-[#063B5C] whitespace-nowrap">
         ₹{formatPrice(offerInfo.discountedPrice)}
       </span>
+        {weightInfo && (
+          <span className="ml-1 text-xs font-medium text-[#315A6E]">{t('product.perWeight', { weight: shortWeight(weightInfo) })}</span>
+        )}
     </div>
   </div>
 
@@ -262,12 +307,12 @@ export default function ProductCard({ product }: ProductCardProps) {
       {!isOutOfStock ? (
         <div className="flex items-center gap-1 text-xs font-medium" style={{ color: '#008FB8' }}>
           <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full animate-pulse" style={{ backgroundColor: '#008FB8' }}></span>
-          <span className="text-[10px] sm:text-[11px] md:text-[12px]">In Stock</span>
+          <span className="text-[12px] md:text-[12px]">{t('product.inStock')}</span>
         </div>
       ) : (
         <div className="flex items-center gap-1 text-red-600 text-xs font-medium">
           <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-red-500 rounded-full"></span>
-          <span className="text-[10px] sm:text-[11px] md:text-[12px]">Out of Stock</span>
+          <span className="text-[12px] md:text-[12px]">{t('product.soldOut')}</span>
         </div>
       )}
     </div>
@@ -275,63 +320,46 @@ export default function ProductCard({ product }: ProductCardProps) {
     {/* Price & Action Row - Desktop Original */}
     <div className="flex flex-wrap items-center justify-between pt-2 sm:pt-3 md:pt-4 gap-2">
       <div className="flex flex-col">
-        <p className="text-[9px] sm:text-[10px] md:text-[11px] text-[#315A6E]/60 font-medium">Price</p>
+        <p className="text-[12px] text-[#315A6E]/60 font-medium">{t('product.price')}</p>
         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
           {hasValidOffer && (
-            <span className="text-[#315A6E]/50 line-through text-[9px] sm:text-[10px] md:text-[11px] font-medium">
+            <span className="text-[#315A6E]/50 line-through text-[12px] font-medium">
               ₹{formatPrice(offerInfo.originalPrice)}
             </span>
           )}
           <span className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-[#063B5C]">
             ₹{formatPrice(offerInfo.discountedPrice)}
           </span>
+        {weightInfo && (
+          <span className="ml-1 text-xs font-medium text-[#315A6E]">{t('product.perWeight', { weight: shortWeight(weightInfo) })}</span>
+        )}
         </div>
       </div>
 
-      <button
-        onClick={handleAddToCart}
-        disabled={isOutOfStock || isAddingToCart}
-        className="flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 px-2 sm:px-3 md:px-4 lg:px-5 py-1.5 sm:py-2 md:py-2.5 rounded-xl transition-all duration-300 active:scale-95 shadow-sm disabled:opacity-50 cursor-pointer min-w-[80px] sm:min-w-[90px] md:min-w-[100px]"
-        style={{ 
-          backgroundColor: '#064B6A',
-          color: 'white'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = '#008FB8';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = '#064B6A';
-        }}
-      >
-        <ShoppingBag size={12} className="sm:w-3.5 sm:h-3.5 md:w-4 md:h-4" />
-        <span className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs font-bold tracking-wide whitespace-nowrap">
-          {isOutOfStock ? 'OUT' : 'Add To Cart'}
-        </span>
-      </button>
     </div>
   </div>
 
-  {/* Mobile: Full Width Add to Cart Button */}
-  <button
-    onClick={handleAddToCart}
-    disabled={isOutOfStock || isAddingToCart}
-    className="md:hidden w-full flex items-center justify-center gap-1 xs:gap-1.5 sm:gap-2 py-2 xs:py-2 sm:py-2.5 rounded-lg xs:rounded-xl transition-all duration-300 active:scale-95 shadow-sm disabled:opacity-50 cursor-pointer"
-    style={{ 
-      backgroundColor: '#064B6A',
-      color: 'white'
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.backgroundColor = '#008FB8';
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.backgroundColor = '#064B6A';
-    }}
-  >
-    <ShoppingBag size={14} className="xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4" />
-    <span className="text-[10px] xs:text-[11px] sm:text-xs font-bold tracking-wide">
-      {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
-    </span>
-  </button>
+  {/* Add to Cart + Buy Now (phone and desktop) */}
+  <div className="mt-2 grid grid-cols-1 gap-1.5 sm:mt-3 sm:grid-cols-2 sm:gap-2">
+    <button
+      type="button"
+      onClick={handleAddToCart}
+      disabled={isOutOfStock || isAddingToCart}
+      className="flex min-h-[40px] items-center justify-center gap-1.5 rounded-lg bg-white px-1.5 text-[12px] font-bold text-[#063B5C] ring-2 ring-inset ring-[#063B5C] transition active:scale-95 hover:bg-[#F0F9FC] disabled:cursor-not-allowed disabled:opacity-50 sm:rounded-xl sm:text-[13px]"
+    >
+      <ShoppingBag size={15} className="hidden shrink-0 sm:block" aria-hidden="true" />
+      <span className="truncate">{isAddingToCart ? '…' : t('product.addToCart')}</span>
+    </button>
+    <button
+      type="button"
+      onClick={handleBuyNow}
+      disabled={isOutOfStock}
+      className="flex min-h-[40px] items-center justify-center gap-1.5 rounded-lg bg-[#063B5C] px-1.5 text-[12px] font-bold text-white shadow-sm transition active:scale-95 hover:bg-[#0B4F8A] disabled:cursor-not-allowed disabled:opacity-50 sm:rounded-xl sm:text-[13px]"
+    >
+      <Zap size={15} className="hidden shrink-0 sm:block" aria-hidden="true" />
+      <span className="truncate">{isOutOfStock ? t('product.soldOut') : t('product.buyNow')}</span>
+    </button>
+  </div>
 </div>
     </div>
   );

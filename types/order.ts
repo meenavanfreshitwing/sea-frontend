@@ -23,6 +23,8 @@ export interface OrderItem {
 export interface Order {
   _id: string;
   orderId: string;
+  deliveryDate?: string | null;   // 'YYYY-MM-DD' (India time)
+  deliverySlot?: { slotId?: string; label?: string; startTime?: string; endTime?: string } | null;
   sNo: number;
 
   name: string;              // ✅ customer name (top-level)

@@ -1,206 +1,123 @@
 'use client';
 
-import React from "react";
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useCallback } from 'react';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Category } from '@/types/category';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface CategoryCarouselProps {
   displayCategories?: Category[];
+  /** Categories page: show every category, no "View all" button, heading as the page title */
+  showAll?: boolean;
 }
 
 const API_IMG_URL = process.env.NEXT_PUBLIC_IMG_URL;
 
-export default function CategoryCarousel({ displayCategories = [] }: CategoryCarouselProps) {
-  const router = useRouter();
-  const [position, setPosition] = useState(0);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const animationRef = useRef<number>(0);
-  const lastTimeRef = useRef<number>(0);
-  const speed = 0.06;
+const imageUrl = (category: Category) => {
+  if (!category.image) return '';
+  return `${API_IMG_URL}/${category.image.replace(/^\/uploads\//, '')}`;
+};
+
+// Collapsed view shows 6 on phones/tablets and 12 on desktop; "View all" opens the rest below.
+const PHONE_LIMIT = 6;
+const DESKTOP_LIMIT = 12;
+
+// Shop-by-category grid: tidy rows that only grow downwards (no sideways scrolling).
+export default function CategoryCarousel({ displayCategories = [], showAll = false }: CategoryCarouselProps) {
+  const { t } = useLanguage();
+  const [categories, setCategories] = useState<Category[]>(displayCategories);
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState(showAll);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        setLoading(true);
-        if (displayCategories.length > 0) {
-          setCategories(displayCategories);
-        } else {
-          const { fetchActiveCategories } = await import('@/lib/categoryService');
-          const data = await fetchActiveCategories();
-          setCategories(data);
-        }
-      } catch (error) {
-        console.error('Error fetching categories:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCategories();
+    if (displayCategories.length > 0) {
+      setCategories(displayCategories);
+      return;
+    }
+    import('@/lib/categoryService')
+      .then(({ fetchActiveCategories }) => fetchActiveCategories())
+      .then(setCategories)
+      .catch(() => setCategories([]));
   }, [displayCategories]);
 
-  const getDuplicatedArray = () => {
-    if (!categories.length) return [];
-    const duplicateCount = categories.length <= 3 ? 8 : 4;
-    return Array(duplicateCount).fill(categories).flat();
+  if (categories.length === 0) return null;
+
+  const total = categories.length;
+  // Visibility per item while collapsed
+  const itemClass = (index: number) => {
+    if (expanded || index < PHONE_LIMIT) return '';
+    if (index < DESKTOP_LIMIT) return 'hidden lg:block';
+    return 'hidden';
   };
-  
-  const carouselCategories = getDuplicatedArray();
-  
-  const animate = useCallback((time: number) => {
-    if (!lastTimeRef.current) {
-      lastTimeRef.current = time;
-    }
-    
-    const delta = time - lastTimeRef.current;
-    lastTimeRef.current = time;
-    
-    setPosition(prev => {
-      if (!containerRef.current) return prev;
-      
-      const containerWidth = containerRef.current.scrollWidth;
-      const singleSetWidth = containerWidth / (carouselCategories.length / categories.length);
-      
-      const newPosition = prev + speed * delta;
-      
-      if (newPosition >= singleSetWidth) {
-        return 0;
-      }
-      
-      return newPosition;
-    });
-    
-    animationRef.current = requestAnimationFrame(animate);
-  }, [categories.length, carouselCategories.length]);
-
-  useEffect(() => {
-    if (!loading && categories.length > 0 && mounted) {
-      setPosition(0);
-      animationRef.current = requestAnimationFrame(animate);
-    }
-    
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, [animate, loading, categories.length, mounted]);
-
-  const getCategoryImage = (category: Category) => {
-    if (category.image) {
-      let imagePath = category.image;
-      if (imagePath.startsWith('/uploads/')) {
-        imagePath = imagePath.replace('/uploads/', '');
-      }
-      return `${API_IMG_URL}/${imagePath}`;
-    }
-    return null;
-  };
-
-  const getCategoryColor = (name: string) => {
-    const colors = ['#063B5C', '#008FB8', '#064B6A', '#00A9E0'];
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return colors[Math.abs(hash) % colors.length];
-  };
-
-  if (!mounted || loading) {
-    return (
-      <section className="w-full py-2 bg-white overflow-hidden">
-        <div className="container mx-auto px-2">
-          <div className="flex justify-center items-center h-16">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#008FB8]"></div>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  if (!categories.length) return null;
-
-  const handleCategoryClick = (category: Category) => {
-    router.push(`/products?category=${category.slug || category._id}`);
-  };
+  // "View all" is needed on phones when > 6, on desktop when > 12
+  const toggleClass = showAll ? 'hidden' : total > DESKTOP_LIMIT ? 'flex' : total > PHONE_LIMIT ? 'flex lg:hidden' : 'hidden';
 
   return (
-    <section className="w-full py-1 bg-white overflow-hidden">
-      <div className="container mx-auto px-1 max-w-full">
-        <div className="relative overflow-hidden">
-          {/* Minimal gradient overlays */}
-          <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none" />
-          <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
-          
-          {/* Carousel Track */}
-          <div 
-            ref={containerRef}
-            className="flex gap-5 py-1"
-            style={{ transform: `translateX(-${position}px)` }}
-          >
-            {carouselCategories.map((category, index) => {
-              const categoryImage = getCategoryImage(category);
-              const fallbackColor = getCategoryColor(category.name);
-              
-              return (
-                <div 
-                  key={`${category._id}-${index}`}
-                  className="flex-shrink-0 w-14 sm:w-16 md:w-20 group cursor-pointer"
-                  onClick={() => handleCategoryClick(category)}
-                >
-                  <div className="bg-white rounded-md p-1 hover:bg-[#F8FCFD] transition-all duration-150">
-                    {/* Tiny Circular Icon */}
-                    <div 
-                      className="relative aspect-square rounded-full overflow-hidden mb-0.5 flex items-center justify-center"
-                      style={{ 
-                        backgroundColor: categoryImage ? undefined : `${fallbackColor}10`,
-                      }}
-                    >
-                      {categoryImage ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={categoryImage}
-                          alt={category.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                            const parent = e.currentTarget.parentElement;
-                            if (parent) {
-                              const span = document.createElement('span');
-                              span.className = 'text-xs font-bold';
-                              span.style.color = fallbackColor;
-                              span.textContent = category.name.charAt(0).toUpperCase();
-                              parent.appendChild(span);
-                            }
-                          }}
-                        />
-                      ) : (
-                        <span 
-                          className="text-xs font-bold"
-                          style={{ color: fallbackColor }}
-                        >
-                          {category.name.charAt(0).toUpperCase()}
-                        </span>
-                      )}
-                    </div>
+    <section aria-labelledby="categories-title" className="border-b border-[#E3F1F6] bg-white">
+      <div className="container mx-auto px-4 py-6 sm:py-8">
+        {showAll ? (
+          <h1 id="categories-title" className="mb-5 text-2xl font-extrabold text-[#063B5C] sm:mb-6 sm:text-3xl">
+            {t('home.categories')}
+          </h1>
+        ) : (
+          <h2 id="categories-title" className="mb-4 text-xl font-extrabold text-[#063B5C] sm:mb-5 sm:text-2xl">
+            {t('home.categories')}
+          </h2>
+        )}
 
-                    {/* Tiny Category Name */}
-                    <h3 className="text-center text-[#315A6E] text-[10px] truncate leading-tight">
-                      {category.name.length > 8 ? category.name.slice(0, 6) + '..' : category.name}
-                    </h3>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+        <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 sm:gap-4 lg:grid-cols-6">
+          {categories.map((category, index) => {
+            const src = imageUrl(category);
+            const showImage = src && !failedImages.has(category._id);
+            return (
+              <li key={category._id} className={itemClass(index)}>
+                <Link
+                  href={`/products?category=${category.slug || category._id}`}
+                  className="group flex h-full flex-col items-center gap-2 rounded-2xl border border-[#D6ECF3] bg-white p-2.5 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-[#008FB8] hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008FB8] sm:p-3"
+                >
+                  <span className="flex aspect-square w-full max-w-[96px] items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-[#EAF8FC] to-[#D6ECF3]">
+                    {showImage ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={src}
+                        alt=""
+                        className="h-full w-full object-cover transition group-hover:scale-105"
+                        loading="lazy"
+                        onError={() => setFailedImages(prev => new Set(prev).add(category._id))}
+                      />
+                    ) : (
+                      <span className="text-3xl font-bold text-[#063B5C]" aria-hidden="true">
+                        {category.name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-[13px] font-semibold leading-tight text-[#063B5C] group-hover:text-[#008FB8] sm:text-sm">
+                    {category.name}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+
+        <div className={`${toggleClass} mt-4 justify-center`}>
+          <button
+            type="button"
+            onClick={() => setExpanded(v => !v)}
+            aria-expanded={expanded}
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-[#008FB8] px-5 font-semibold text-[#008FB8] transition hover:bg-[#008FB8] hover:text-white"
+          >
+            {expanded ? (
+              <>
+                {t('home.showLess')} <ChevronUp className="h-4 w-4" aria-hidden="true" />
+              </>
+            ) : (
+              <>
+                {t('home.viewAll', { n: total })} <ChevronDown className="h-4 w-4" aria-hidden="true" />
+              </>
+            )}
+          </button>
         </div>
       </div>
     </section>

@@ -22,6 +22,8 @@ export interface PublicSettings {
   siteDescription: string;
   contactEmail: string;
   contactNumber: string;
+  whatsappNumber?: string;
+  fssaiNumber?: string;
   companyAddress: string;
   socialMedia: SocialMedia;
   footerText: string;
@@ -67,6 +69,8 @@ export interface SettingsFormData {
   
   // Contact info
   contactNumber: string;
+  whatsappNumber?: string;
+  fssaiNumber?: string;
   contactEmail: string;
   companyAddress: string;
   

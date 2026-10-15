@@ -4,7 +4,7 @@ import ContactForm from '@/components/ContactForm';
 import ContactInfo from '@/components/ContactInfo';
 
 export default function ContactPage() {
-  const storeName = process.env.NEXT_PUBLIC_SITE_NAME || 'Sea Food';
+  const storeName = process.env.NEXT_PUBLIC_SITE_NAME || 'Meenavan Fresh';
   
   return (
     <div className="min-h-screen bg-white py-6 sm:py-12">
@@ -15,7 +15,7 @@ export default function ContactPage() {
             Contact Us
           </h1>
           <p className="text-sm sm:text-base md:text-lg lg:text-xl text-[#315A6E] max-w-2xl mx-auto leading-relaxed px-2 sm:px-0">
-            Have questions about our premium MeenavanFresh including fresh fish, prawns, crabs, and daily catches? We&apos;d love to hear from you. Send us a message and we&apos;ll respond as soon as possible.
+            Have questions about our premium seafood including fresh fish, prawns, crabs, and daily catches? We&apos;d love to hear from you. Send us a message and we&apos;ll respond as soon as possible.
           </p>
         </div>
 
@@ -46,7 +46,7 @@ export default function ContactPage() {
                   </svg>
                 </div>
                 <h4 className="font-semibold text-sm sm:text-base" style={{ color: '#EAF8FC' }}>Premium Quality</h4>
-                <p className="text-xs sm:text-sm px-2 sm:px-0" style={{ color: '#EAF8FC' }}>Fresh MeenavanFresh sourced daily from local fishermen for exceptional quality and taste</p>
+                <p className="text-xs sm:text-sm px-2 sm:px-0" style={{ color: '#EAF8FC' }}>Fresh seafood sourced daily from local fishermen for exceptional quality and taste</p>
               </div>
               <div className="space-y-2 sm:space-y-3">
                 <div className="w-10 h-10 sm:w-12 sm:h-12 mx-auto rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 169, 224, 0.2)' }}>

@@ -5,8 +5,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function LoginForm() {
+  const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -101,7 +103,7 @@ export default function LoginForm() {
       
       // ✅ If user doesn't exist, redirect to signup silently (NO OTP sent)
       if (!result.exists) {
-        router.push(`/signup?phone=${phoneNumber}`);
+        router.push(`/signup?phone=${phoneNumber}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ''}`);
         return;
       }
       
@@ -148,7 +150,7 @@ export default function LoginForm() {
       
       // ✅ If user doesn't exist, redirect to signup silently
       if (!result.exists) {
-        router.push(`/signup?phone=${phoneNumber}`);
+        router.push(`/signup?phone=${phoneNumber}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ''}`);
         return;
       }
       
@@ -235,12 +237,12 @@ export default function LoginForm() {
             className="relative z-10"
           >
             <h2 className="text-3xl font-bold text-white">
-              {sessionId ? 'Verify OTP' : 'Welcome back'}
+              {sessionId ? t('auth.enterCode') : t('auth.welcome')}
             </h2>
             <p className="text-white opacity-90 mt-2 text-sm">
               {sessionId 
-                ? `Enter the 6-digit code sent to ${phoneNumber}`
-                : 'Sign in with your phone number'
+                ? t('auth.codeSentTo', { phone: phoneNumber })
+                : t('auth.signInSub')
               }
             </p>
           </motion.div>
@@ -258,7 +260,7 @@ export default function LoginForm() {
 
             <div className="mb-6">
               <label htmlFor="phoneNumber" className="block text-sm font-semibold text-[#315A6E] mb-2 ml-1">
-                Phone Number
+                {t('auth.phone')}
               </label>
               <div className="relative">
                 <motion.div
@@ -328,11 +330,11 @@ export default function LoginForm() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span>Sending OTP...</span>
+                  <span>{t('auth.sending')}</span>
                 </div>
               ) : (
                 <span className="flex items-center justify-center gap-2">
-                  Send OTP
+                  {t('auth.sendCode')}
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                   </svg>
@@ -345,19 +347,19 @@ export default function LoginForm() {
                 <div className="w-full border-t border-[#B8DCE7]"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-[#315A6E]/60">Secure login with OTP</span>
+                <span className="px-4 bg-white text-[#315A6E]/60">{t('auth.noPassword')}</span>
               </div>
             </div>
 
             <div className="text-center">
               <p className="text-sm text-[#315A6E]">
-                Don't have an account?{' '}
+                {t('auth.noAccount')}{' '}
                 <button
                   type="button"
                   onClick={() => router.push('/signup')}
                   className="font-semibold text-[#008FB8] hover:underline transition-colors cursor-pointer"
                 >
-                  Sign Up
+                  {t('auth.signUp')}
                 </button>
               </p>
             </div>
@@ -366,7 +368,7 @@ export default function LoginForm() {
           <form onSubmit={handleVerifyOtp} className="px-8 py-8 bg-white">
             <div className="mb-6">
               <label htmlFor="otpCode" className="block text-sm font-semibold text-[#315A6E] mb-2 ml-1">
-                Enter OTP Code
+                {t('auth.codeLabel')}
               </label>
               <div className="relative">
                 <motion.div
@@ -438,7 +440,7 @@ export default function LoginForm() {
                       : 'text-[#008FB8] hover:underline'
                   }`}
                 >
-                  {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend OTP'}
+                  {resendTimer > 0 ? t('auth.resendIn', { s: resendTimer }) : t('auth.resend')}
                 </button>
               </p>
             </div>
@@ -457,11 +459,11 @@ export default function LoginForm() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span>Verifying...</span>
+                  <span>{t('auth.verifying')}</span>
                 </div>
               ) : (
                 <span className="flex items-center justify-center gap-2">
-                  Verify & Sign In
+                  {t('auth.verifySignIn')}
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                   </svg>

@@ -5,6 +5,14 @@ import { useState, useEffect } from 'react';
 import { getUserOrders, getOrderById, cancelOrder } from '@/lib/order-api';
 import { Order, OrderItem } from '@/types/order';
 import { useRouter } from 'next/navigation';
+import { formatDeliveryDate } from '@/lib/booking-api';
+import RateDeliveredItems from '@/components/reviews/RateDeliveredItems';
+import { useLanguage } from '@/context/LanguageContext';
+import { dateLocale } from '@/lib/i18n/translations';
+import OrderAgainButton from '@/components/profile/OrderAgainButton';
+import OrderProgress from '@/components/profile/OrderProgress';
+import CancelOrderDialog, { type CancelDialogMode } from '@/components/profile/CancelOrderDialog';
+import type { TranslationKey } from '@/lib/i18n/translations';
 
 // Helper function to calculate order total
 const calculateOrderTotal = (order: Order): number => {
@@ -63,6 +71,7 @@ const formatWeight = (item: OrderItem): string | null => {
 };
 
 export default function UserProfile() {
+  const { t, lang } = useLanguage();
   const [orders, setOrders] = useState<Order[]>([]);
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [cancelledOrders, setCancelledOrders] = useState<Order[]>([]);
@@ -70,7 +79,9 @@ export default function UserProfile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
-  const [showCancelModal, setShowCancelModal] = useState(false);
+  // null = closed, 'confirm' = Are you sure?, 'blocked' = can't cancel any more
+  const [cancelMode, setCancelMode] = useState<CancelDialogMode | null>(null);
+  const [cancelError, setCancelError] = useState('');
   const [showCancelledOrdersModal, setShowCancelledOrdersModal] = useState(false);
   const [cancellationReason, setCancellationReason] = useState('');
   const [showPDFModal, setShowPDFModal] = useState(false);
@@ -122,9 +133,39 @@ export default function UserProfile() {
     }
   };
 
-  const handleCancelOrder = (order: Order) => {
-    setSelectedOrder(order);
-    setShowCancelModal(true);
+  // Replace one order everywhere it is shown (e.g. after reading its latest status)
+  const patchOrder = (updated: Order) => {
+    const merge = (list: Order[]) => list.map(o => (o._id === updated._id ? { ...o, ...updated } : o));
+    setOrders(merge);
+    setActiveOrders(merge);
+  };
+
+  const handleCancelOrder = async (order: Order) => {
+    setCancelError('');
+    setCancellationReason('');
+    setCancellingOrderId(order._id);
+    // The shop may have started packing since this page was opened: check the latest status first
+    let latest = order;
+    try {
+      const fresh = await getOrderById(order._id);
+      if (fresh) {
+        latest = { ...order, ...fresh };
+        patchOrder(latest);
+      }
+    } catch {
+      // offline or server busy: fall back to what is on screen (the server checks again anyway)
+    } finally {
+      setCancellingOrderId(null);
+    }
+    setSelectedOrder(latest);
+    setCancelMode(isCancellableNow(latest) ? 'confirm' : 'blocked');
+  };
+
+  const closeCancelDialog = () => {
+    setCancelMode(null);
+    setSelectedOrder(null);
+    setCancellationReason('');
+    setCancelError('');
   };
 
   const confirmCancelOrder = async () => {
@@ -153,13 +194,21 @@ export default function UserProfile() {
         ...prevOrders
       ]);
 
-      // Close modal and reset state
-      setShowCancelModal(false);
-      setSelectedOrder(null);
-      setCancellationReason('');
-
+      closeCancelDialog();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to cancel order');
+      if ((err as { code?: string })?.code === 'NOT_CANCELLABLE') {
+        try {
+          const fresh = await getOrderById(selectedOrder._id);
+          if (fresh) {
+            const latest = { ...selectedOrder, ...fresh };
+            patchOrder(latest);
+            setSelectedOrder(latest);
+          }
+        } catch {}
+        setCancelMode('blocked');
+      } else {
+        setCancelError(t('cancel.failed'));
+      }
       console.error('Error cancelling order:', err);
     } finally {
       setCancellingOrderId(null);
@@ -212,12 +261,19 @@ export default function UserProfile() {
     setPdfUrl('');
   };
 
-  const canCancelOrder = (order: Order): boolean => {
-    const cancellableStatuses = ['pending', 'confirmed', 'processing'];
-    return cancellableStatuses.includes(order.orderStatus);
-  };
+  const deliveryStatusOf = (order: Order) => (order as { deliveryStatus?: string }).deliveryStatus || '';
 
-  const getStatusBadge = (status: string, type: 'order' | 'payment') => {
+  // Customers can cancel until packing starts (admin sets "processing") and before pickup
+  const isCancellableNow = (order: Order): boolean =>
+    ['pending', 'confirmed'].includes(order.orderStatus) &&
+    !['picked_up', 'delivered'].includes(deliveryStatusOf(order));
+
+  // The button stays visible while the order is on its way, so customers learn why they can't cancel
+  const canCancelOrder = (order: Order): boolean =>
+    ['pending', 'confirmed', 'processing', 'shipped'].includes(order.orderStatus) &&
+    deliveryStatusOf(order) !== 'delivered';
+
+  const getStatusBadge = (status: string, type: 'order' | 'payment', paymentMethod?: string) => {
     const statusColors = {
       order: {
         pending: 'bg-yellow-100 text-yellow-800 border border-yellow-200',
@@ -239,9 +295,18 @@ export default function UserProfile() {
 
     return (
       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${colorClass}`}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {statusLabel(status, type, paymentMethod)}
       </span>
     );
+  };
+
+  // Plain words for customers ("Pending" alone was unclear: order or payment?)
+  const statusLabel = (status: string, type: 'order' | 'payment', paymentMethod?: string) => {
+    const key = type === 'payment' && status === 'pending' && paymentMethod === 'cod'
+      ? 'status.payment.cod'
+      : `status.${type}.${status}`;
+    const text = t(key as TranslationKey);
+    return text === key ? status.charAt(0).toUpperCase() + status.slice(1) : text;
   };
 
   const formatDate = (dateString: string) => {
@@ -261,7 +326,7 @@ export default function UserProfile() {
           <div className="flex justify-center items-center py-12">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#008FB8] mx-auto"></div>
-              <p className="mt-4 text-[#315A6E]">Loading your orders...</p>
+              <p className="mt-4 text-[#315A6E]">{t('profile.loading')}</p>
             </div>
           </div>
         </div>
@@ -292,8 +357,8 @@ export default function UserProfile() {
       <div className="container mx-auto px-4">
         {/* Header Section */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-[#063B5C]">My Profile</h1>
-          <p className="text-[#315A6E] mt-1">Manage your account and orders</p>
+          <h1 className="text-3xl font-bold text-[#063B5C]">{t('profile.title')}</h1>
+          <p className="text-[#315A6E] mt-1">{t('profile.subtitle')}</p>
         </div>
 
         {activeOrders.length === 0 && cancelledOrders.length === 0 ? (
@@ -304,13 +369,13 @@ export default function UserProfile() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-[#063B5C] mb-2">No orders yet</h3>
-              <p className="text-[#315A6E] mb-6">Start shopping to see your orders here</p>
+              <h3 className="text-2xl font-bold text-[#063B5C] mb-2">{t('profile.noOrders')}</h3>
+              <p className="text-[#315A6E] mb-6">{t('profile.noOrdersText')}</p>
               <button
                 onClick={() => router.push('/products')}
                 className="bg-[#064B6A] text-white px-6 py-3 rounded-lg hover:bg-[#008FB8] transition-all duration-200 font-medium cursor-pointer"
               >
-                Start Shopping
+                {t('profile.startShopping')}
               </button>
             </div>
           </div>
@@ -321,22 +386,22 @@ export default function UserProfile() {
               <div className="sticky top-6 space-y-6">
                 {/* Profile Summary Card */}
                 <div className="bg-white rounded-lg shadow-md p-6 border border-[#B8DCE7]">
-                  <h3 className="text-lg font-semibold text-[#063B5C] mb-4">Profile Summary</h3>
+                  <h3 className="text-lg font-semibold text-[#063B5C] mb-4">{t('profile.summary')}</h3>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-[#315A6E]">Active Orders</span>
+                      <span className="text-[#315A6E]">{t('profile.orders')}</span>
                       <span className="font-semibold text-[#063B5C]">{activeOrders.length}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-[#315A6E]">Cancelled Orders</span>
+                      <span className="text-[#315A6E]">{t('profile.cancelled')}</span>
                       <span className="font-semibold text-[#063B5C]">{cancelledOrders.length}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-[#315A6E]">Total Orders</span>
+                      <span className="text-[#315A6E]">{t('profile.totalOrders')}</span>
                       <span className="font-semibold text-[#063B5C]">{orders.length}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-[#315A6E]">Total Spent</span>
+                      <span className="text-[#315A6E]">{t('profile.totalSpent')}</span>
                       <span className="font-semibold text-[#063B5C]">
                         ₹{formatAmount(orders.reduce((total, order) => total + calculateOrderTotal(order), 0))}
                       </span>
@@ -346,7 +411,7 @@ export default function UserProfile() {
 
                 {/* Quick Actions */}
                 <div className="bg-white rounded-lg shadow-md p-6 border border-[#B8DCE7]">
-                  <h3 className="text-lg font-semibold text-[#063B5C] mb-4">Quick Actions</h3>
+                  <h3 className="text-lg font-semibold text-[#063B5C] mb-4">{t('profile.quickActions')}</h3>
                   <div className="space-y-3">
                     {cancelledOrders.length > 0 && (
                       <button
@@ -366,22 +431,23 @@ export default function UserProfile() {
                       <svg className="w-5 h-5 text-[#315A6E]/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                       </svg>
-                      Continue Shopping
+                      {t('common.continueShopping')}
                     </button>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Main Content - Active Orders */}
-            <div className="lg:col-span-3">
+            {/* Main Content - Orders */}
+            <div className="lg:col-span-3 space-y-6">
+              <RateDeliveredItems />
               <div className="bg-white rounded-lg shadow-md border border-[#B8DCE7] overflow-hidden">
                 <div className="px-6 py-4 border-b border-[#B8DCE7] bg-[#F8FCFD]">
                   <div className="flex justify-between items-center">
                     <div>
-                      <h2 className="text-xl font-semibold text-[#063B5C]">Active Orders</h2>
+                      <h2 className="text-xl font-semibold text-[#063B5C]">{t('profile.orders')}</h2>
                       <p className="text-[#315A6E] mt-1 text-sm">
-                        {activeOrders.length} {activeOrders.length === 1 ? 'active order' : 'active orders'}
+                        {activeOrders.length === 1 ? t('profile.ordersCountOne') : t('profile.ordersCount', { n: activeOrders.length })}
                       </p>
                     </div>
                     {cancelledOrders.length > 0 && (
@@ -411,7 +477,7 @@ export default function UserProfile() {
                       onClick={() => router.push('/products')}
                       className="bg-[#064B6A] text-white px-6 py-2 rounded-lg hover:bg-[#008FB8] transition-all duration-200 font-medium cursor-pointer"
                     >
-                      Start Shopping
+                      {t('profile.startShopping')}
                     </button>
                   </div>
                 ) : (
@@ -433,21 +499,29 @@ export default function UserProfile() {
                                 </h3>
                                 <div className="flex flex-wrap gap-2">
                                   {getStatusBadge(order.orderStatus, 'order')}
-                                  {getStatusBadge(order.paymentStatus, 'payment')}
+                                  {getStatusBadge(order.paymentStatus, 'payment', order.paymentMethod)}
                                 </div>
                               </div>
 
                               <p className="text-[#315A6E] mb-3 text-sm">
-                                Placed on {formatDate(order.createdAt)}
+                                {t('profile.placedOn', { date: formatDate(order.createdAt) })}
+                                {order.deliveryDate && (
+                                  <span className="ml-2 font-semibold text-[#008FB8]">
+                                    · {t('profile.delivery', { date: formatDeliveryDate(order.deliveryDate, undefined, dateLocale(lang)) })}
+                                    {order.deliverySlot?.label ? `, ${order.deliverySlot.label}` : ''}
+                                  </span>
+                                )}
                               </p>
 
+                              <OrderProgress orderStatus={order.orderStatus} deliveryStatus={(order as { deliveryStatus?: string }).deliveryStatus} />
+
                               <div className="flex flex-wrap items-center gap-3 text-sm">
-                                <span className="text-[#315A6E]">{order.products?.length || 0} items</span>
+                                <span className="text-[#315A6E]">{(order.products?.length || 0) === 1 ? t('cartBar.itemsOne') : t('cartBar.items', { n: order.products?.length || 0 })}</span>
                                 <span className="text-[#315A6E]/50">•</span>
                                 <span className="font-semibold text-[#063B5C]">
                                   ₹{formatAmount(orderTotal)}
                                 </span>
-                                {orderTotal > 0 && subtotal > 0 && orderTotal !== subtotal && (
+                                {orderTotal > 0 && subtotal > orderTotal && (
                                   <>
                                     <span className="text-[#315A6E]/50">•</span>
                                     <span className="text-[#315A6E]/60 line-through text-xs">
@@ -456,7 +530,7 @@ export default function UserProfile() {
                                   </>
                                 )}
                                 <span className="text-[#315A6E]/50">•</span>
-                                <span className="text-[#315A6E] capitalize">{order.paymentMethod}</span>
+                                <span className="text-[#315A6E]">{order.paymentMethod === 'cod' ? t('profile.payCod') : t('profile.payOnline')}</span>
                               </div>
 
                               {/* Order Items Preview */}
@@ -509,10 +583,14 @@ export default function UserProfile() {
                                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                       </svg>
-                                      Cancel Order
+                                      {t('profile.cancelOrder')}
                                     </>
                                   )}
                                 </button>
+                              )}
+
+                              {order.orderStatus !== 'cancelled' && (
+                                <OrderAgainButton items={order.products} />
                               )}
 
                               <button
@@ -530,7 +608,7 @@ export default function UserProfile() {
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
                                     </svg>
-                                    View Invoice
+                                    {t('profile.viewInvoice')}
                                   </>
                                 )}
                               </button>
@@ -547,60 +625,21 @@ export default function UserProfile() {
         )}
 
         {/* Cancel Order Confirmation Modal */}
-        {showCancelModal && selectedOrder && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 border border-[#B8DCE7]">
-              <h3 className="text-lg font-semibold text-[#063B5C] mb-4">
-                Cancel Order #{selectedOrder.orderId || selectedOrder._id?.slice(-8)}
-              </h3>
-
-              <p className="text-[#315A6E] mb-4">
-                Are you sure you want to cancel this order? This action cannot be undone.
-              </p>
-
-              <div className="mb-4">
-                <label htmlFor="cancellationReason" className="block text-sm font-medium text-[#315A6E] mb-2">
-                  Reason for cancellation (optional)
-                </label>
-                <textarea
-                  id="cancellationReason"
-                  value={cancellationReason}
-                  onChange={(e) => setCancellationReason(e.target.value)}
-                  placeholder="Please provide a reason for cancellation..."
-                  className="w-full px-3 py-2 border border-[#B8DCE7] rounded-md focus:outline-none focus:ring-2 focus:ring-[#008FB8] focus:border-[#008FB8] transition-all duration-200"
-                  rows={3}
-                />
-              </div>
-
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => {
-                    setShowCancelModal(false);
-                    setSelectedOrder(null);
-                    setCancellationReason('');
-                  }}
-                  className="px-4 py-2 text-[#315A6E] border border-[#B8DCE7] rounded-lg hover:bg-[#F8FCFD] transition-colors cursor-pointer"
-                  disabled={cancellingOrderId !== null}
-                >
-                  Keep Order
-                </button>
-                <button
-                  onClick={confirmCancelOrder}
-                  disabled={cancellingOrderId !== null}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
-                >
-                  {cancellingOrderId ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      Cancelling...
-                    </>
-                  ) : (
-                    'Cancel Order'
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
+        {cancelMode && selectedOrder && (
+          <CancelOrderDialog
+            mode={cancelMode}
+            orderNumber={selectedOrder.orderId || selectedOrder._id?.slice(-8)}
+            items={(selectedOrder.products || []).map(item => `${getProductDisplayName(item)} × ${item.quantity}`)}
+            total={formatAmount(calculateOrderTotal(selectedOrder))}
+            paidOnline={selectedOrder.paymentMethod !== 'cod' && selectedOrder.paymentStatus === 'completed'}
+            onTheWay={selectedOrder.orderStatus === 'shipped' || ['picked_up', 'delivered'].includes(deliveryStatusOf(selectedOrder))}
+            reason={cancellationReason}
+            busy={cancellingOrderId !== null}
+            error={cancelError}
+            onReasonChange={setCancellationReason}
+            onConfirm={confirmCancelOrder}
+            onClose={closeCancelDialog}
+          />
         )}
 
         {/* PDF Modal */}
@@ -714,7 +753,7 @@ export default function UserProfile() {
                                 </h3>
                                 <div className="flex flex-wrap gap-2">
                                   {getStatusBadge(order.orderStatus, 'order')}
-                                  {getStatusBadge(order.paymentStatus, 'payment')}
+                                  {getStatusBadge(order.paymentStatus, 'payment', order.paymentMethod)}
                                 </div>
                               </div>
 
@@ -723,13 +762,13 @@ export default function UserProfile() {
                               </p>
 
                               <div className="flex flex-wrap items-center gap-3 text-sm">
-                                <span className="text-[#315A6E]">{order.products?.length || 0} items</span>
+                                <span className="text-[#315A6E]">{(order.products?.length || 0) === 1 ? t('cartBar.itemsOne') : t('cartBar.items', { n: order.products?.length || 0 })}</span>
                                 <span className="text-[#315A6E]/50">•</span>
                                 <span className="font-semibold text-[#063B5C]">
                                   ₹{formatAmount(orderTotal)}
                                 </span>
                                 <span className="text-[#315A6E]/50">•</span>
-                                <span className="text-[#315A6E] capitalize">{order.paymentMethod}</span>
+                                <span className="text-[#315A6E]">{order.paymentMethod === 'cod' ? t('profile.payCod') : t('profile.payOnline')}</span>
                               </div>
 
                               {/* Order Items Preview */}
@@ -775,7 +814,7 @@ export default function UserProfile() {
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
                                 </svg>
-                                View Invoice
+                                {t('profile.viewInvoice')}
                               </button>
                             </div>
                           </div>

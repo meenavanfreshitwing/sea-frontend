@@ -3,21 +3,23 @@
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from 'framer-motion';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function HomeHeroBanner() {
+  const { t } = useLanguage();
   // 🎯 Static images base URL (R2)
   const STATIC_URL = process.env.NEXT_PUBLIC_STATIC_URL;
 
   // Static banner data
   const banner = {
     title: "Meenavan Fresh",
-    subtitle: "Fresh Catch Daily",
-    description: "Explore the Freshest MeenavanFresh Delivered to Your Doorstep",
+    subtitle: t('heroBanner.subtitle'),
+    description: t('heroBanner.description'),
     leftImage: `${STATIC_URL}/d1.webp`,
     rightImage: `${STATIC_URL}/d2.webp`,
     leftLink: "/products",
     rightLink: "/products",
-    stats: ["Fresh Catch", "Quick Delivery", "Quality Assured"],
+    stats: [t('heroBanner.stat1'), t('heroBanner.stat2'), t('heroBanner.stat3')],
   };
 
   const leftImageUrl = banner.leftImage;

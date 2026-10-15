@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import {
   Mail,
   Phone,
@@ -17,18 +16,24 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { settingsAPI } from "@/lib/settings-api";
+import BrandWordmark from '@/components/ui/BrandWordmark';
+import { useLanguage } from '@/context/LanguageContext';
+import { FaWhatsapp } from 'react-icons/fa';
+import { BadgeCheck } from 'lucide-react';
+import { whatsappLink } from '@/components/HelpButton';
 
 export default function Footer() {
+  const { t, lang } = useLanguage();
   // 🎯 Static images base URL (R2)
   const STATIC_URL = process.env.NEXT_PUBLIC_STATIC_URL;
 
-  const [siteName, setSiteName] = useState("Sea Food");
   const [siteDescription, setSiteDescription] = useState("");
-  const [contactEmail, setContactEmail] = useState(
-    "support@MeenavanFresh.com"
-  );
-  const [contactNumber, setContactNumber] = useState("+91 98765 43210");
-  const [companyAddress, setCompanyAddress] = useState("Mumbai, India");
+  // Filled from store settings; empty lines are hidden
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactNumber, setContactNumber] = useState("");
+  const [companyAddress, setCompanyAddress] = useState("");
+  const [whatsappNumber, setWhatsappNumber] = useState("");
+  const [fssaiNumber, setFssaiNumber] = useState("");
   const [footerText, setFooterText] = useState("");
 
   const [socialMedia, setSocialMedia] = useState({
@@ -39,30 +44,7 @@ export default function Footer() {
     linkedin: "",
   });
 
-  const [loading, setLoading] = useState(true);
 
-  const getLogoLines = () => {
-    if (!siteName || siteName.trim() === "") {
-      return { first: "", second: "" };
-    }
-
-    const nameParts = siteName.trim().split(" ");
-
-    if (nameParts.length > 1) {
-      return {
-        first: nameParts[0],
-        second: nameParts.slice(1).join(" "),
-      };
-    }
-
-    return {
-      first: nameParts[0],
-      second: "",
-    };
-  };
-
-  const { first: logoFirstLine, second: logoSecondLine } =
-    getLogoLines();
 
   useEffect(() => {
     fetchSettings();
@@ -74,10 +56,6 @@ export default function Footer() {
 
       if (response.success && response.data) {
         const data = response.data;
-
-        if (data.siteName) {
-          setSiteName(data.siteName);
-        }
 
         if (data.siteDescription) {
           setSiteDescription(data.siteDescription);
@@ -94,6 +72,9 @@ export default function Footer() {
         if (data.companyAddress) {
           setCompanyAddress(data.companyAddress);
         }
+
+        setWhatsappNumber(data.whatsappNumber || "");
+        setFssaiNumber(data.fssaiNumber || "");
 
         if (data.footerText) {
           setFooterText(data.footerText);
@@ -146,8 +127,6 @@ export default function Footer() {
       }
     } catch (error) {
       console.error("Error fetching footer settings:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -189,273 +168,140 @@ export default function Footer() {
   );
 
   const navLinks = [
-    { title: "Home", href: "/" },
-    { title: "About", href: "/about" },
-    { title: "Contact", href: "/contact" },
-  ];
+    { key: "nav.home", href: "/" },
+    { key: "home.categories", href: "/categories" },
+    { key: "offers.title", href: "/offers" },
+    { key: "nav.about", href: "/about" },
+    { key: "nav.contact", href: "/contact" },
+    { key: "nav.myOrders", href: "/profile" },
+  ] as const;
 
   const legalLinks = [
-    { title: "Terms", href: "/terms" },
-    { title: "Privacy Policy", href: "/privacy" },
-    { title: "Shipping Info", href: "/shipping" },
-    { title: "Returns", href: "/returns" },
-  ];
+    { key: "footer.shipping", href: "/shipping" },
+    { key: "footer.returns", href: "/returns" },
+    { key: "footer.terms", href: "/terms" },
+    { key: "footer.privacy", href: "/privacy" },
+  ] as const;
 
-  const copyrightText =
-    footerText ||
-    `© ${new Date().getFullYear()} ${siteName}. All rights reserved.`;
-
-  if (loading) {
-    return (
-      <footer
-        className="pt-12 pb-8"
-        style={{
-          backgroundColor: "#F8FCFD",
-          color: "#315A6E",
-        }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-center items-center h-40">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#008FB8]" />
-          </div>
-        </div>
-      </footer>
-    );
-  }
+  const headingClass = "mb-4 text-sm font-bold uppercase tracking-wider text-[#063B5C]";
+  const linkClass = "text-[15px] text-[#315A6E] transition-colors hover:text-[#008FB8]";
 
   return (
-    <footer
-      className="pt-12 pb-8"
-      style={{
-        backgroundColor: "#ebf7f9",
-        color: "#315A6E",
-      }}
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-
-          {/* About Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-          >
-            <div className="flex items-center gap-3 mb-4">
-
-              {/* 🎯 Footer Logo Image — R2 static */}
-              <div className="relative w-16 h-16 lg:w-20 lg:h-20 flex-shrink-0">
-                <Image
-                  src={`${STATIC_URL}/logoo.webp`}
-                  alt={siteName}
-                  fill
-                  className="object-contain"
-                />
-              </div>
-
-              <div className="flex flex-col justify-center">
-                <span className="text-[25px] sm:text-[25px] lg:text-[28px] font-black tracking-[2px] lg:tracking-[3px] text-[#063B5C] leading-none">
-                  {logoFirstLine}
-                </span>
-
-                {logoSecondLine && (
-                  <span className="text-[18px] sm:text-[18px] lg:text-[16px] font-bold tracking-[1px] text-[#008FB8] leading-none ml-4 sm:ml-3 lg:ml-5">
-                    {logoSecondLine}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <p
-              className="text-sm leading-relaxed font-medium"
-              style={{ color: "#315A6E" }}
-            >
-              {siteDescription}
+    <footer id="site-footer" className="mt-auto border-t border-[#D6ECF3] bg-[#F4FAFC] text-[#315A6E]">
+      <div className="mx-auto max-w-7xl px-4 pb-8 pt-12 sm:px-6 lg:px-8">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr] lg:gap-12">
+          {/* Brand */}
+          <div>
+            <Link href="/" className="flex items-center gap-3">
+              <span className="relative h-16 w-16 shrink-0">
+                <Image src={`${STATIC_URL}/logoo.webp`} alt="Meenavan Fresh" fill className="object-contain" sizes="64px" />
+              </span>
+              <BrandWordmark size="lg" />
+            </Link>
+            <p className="mt-4 max-w-xs text-[15px] leading-relaxed">
+              {siteDescription && lang === "en" ? siteDescription : t("footer.about")}
             </p>
-
             {activeSocialLinks.length > 0 && (
-              <div className="flex gap-3 mt-4">
-                {activeSocialLinks.map((social) => {
-                  const Icon = social.icon;
-
-                  return (
-                    <motion.a
-                      key={social.key}
-                      href={social.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      whileHover={{ y: -3, scale: 1.1 }}
-                      transition={{
-                        type: "spring",
-                        stiffness: 400,
-                      }}
-                      className="transition-colors hover:text-[#00A9E0]"
-                      style={{ color: "#008FB8" }}
-                      aria-label={social.label}
-                    >
-                      <Icon size={18} />
-                    </motion.a>
-                  );
-                })}
+              <div className="mt-5">
+                <p className="mb-2 text-sm font-semibold text-[#063B5C]">{t("footer.followUs")}</p>
+                <div className="flex gap-2">
+                  {activeSocialLinks.map((social) => {
+                    const Icon = social.icon;
+                    return (
+                      <a
+                        key={social.key}
+                        href={social.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={social.label}
+                        className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#063B5C] shadow-sm ring-1 ring-[#D6ECF3] transition hover:bg-[#008FB8] hover:text-white"
+                      >
+                        <Icon className="h-4 w-4" />
+                      </a>
+                    );
+                  })}
+                </div>
               </div>
             )}
-          </motion.div>
+          </div>
 
-          {/* Quick Links */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-          >
-            <h4
-              className="font-extrabold text-[12px] tracking-[2px] uppercase mb-4"
-              style={{ color: "#063B5C" }}
-            >
-              Quick Links
-            </h4>
-
-            <ul className="space-y-2 text-sm">
+          {/* Quick links */}
+          <nav aria-label={t("footer.quickLinks")}>
+            <h2 className={headingClass}>{t("footer.quickLinks")}</h2>
+            <ul className="space-y-2.5">
               {navLinks.map((link) => (
-                <motion.li
-                  key={link.title}
-                  whileHover={{ x: 3 }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 400,
-                  }}
-                >
-                  <Link
-                    href={link.href}
-                    className="text-[12px] font-extrabold tracking-[1px] transition-colors hover:text-[#008FB8]"
-                    style={{ color: "#063B5C" }}
-                  >
-                    {link.title.toUpperCase()}
-                  </Link>
-                </motion.li>
+                <li key={link.href}>
+                  <Link href={link.href} className={linkClass}>{t(link.key)}</Link>
+                </li>
               ))}
             </ul>
-          </motion.div>
+          </nav>
 
-          {/* Legal */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.3 }}
-          >
-            <h4
-              className="font-extrabold text-[12px] tracking-[2px] uppercase mb-4"
-              style={{ color: "#063B5C" }}
-            >
-              Legal
-            </h4>
-
-            <ul className="space-y-2 text-sm">
+          {/* Help & policies */}
+          <nav aria-label={t("footer.help")}>
+            <h2 className={headingClass}>{t("footer.help")}</h2>
+            <ul className="space-y-2.5">
               {legalLinks.map((link) => (
-                <motion.li
-                  key={link.title}
-                  whileHover={{ x: 3 }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 400,
-                  }}
-                >
-                  <Link
-                    href={link.href}
-                    className="text-[12px] font-extrabold tracking-[1px] transition-colors hover:text-[#008FB8]"
-                    style={{ color: "#063B5C" }}
-                  >
-                    {link.title.toUpperCase()}
-                  </Link>
-                </motion.li>
+                <li key={link.href}>
+                  <Link href={link.href} className={linkClass}>{t(link.key)}</Link>
+                </li>
               ))}
             </ul>
-          </motion.div>
+          </nav>
 
           {/* Contact */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.4 }}
-          >
-            <h4
-              className="font-extrabold text-[12px] tracking-[2px] uppercase mb-4"
-              style={{ color: "#063B5C" }}
-            >
-              Contact Us
-            </h4>
-
-            <ul className="space-y-2 text-sm">
-
-              <li className="flex items-start space-x-2">
-                <Mail
-                  className="w-4 h-4 mt-0.5 flex-shrink-0"
-                  style={{ color: "#008FB8" }}
-                />
-
-                <span
-                  className="text-[12px] font-semibold tracking-[0.5px]"
-                  style={{ color: "#315A6E" }}
-                >
-                  {contactEmail}
-                </span>
-              </li>
-
-              <li className="flex items-start space-x-2">
-                <Phone
-                  className="w-4 h-4 mt-0.5 flex-shrink-0"
-                  style={{ color: "#008FB8" }}
-                />
-
-                <span
-                  className="text-[12px] font-semibold tracking-[0.5px]"
-                  style={{ color: "#315A6E" }}
-                >
-                  {contactNumber}
-                </span>
-              </li>
-
-              <li className="flex items-start space-x-2">
-                <MapPin
-                  className="w-4 h-4 mt-0.5 flex-shrink-0"
-                  style={{ color: "#008FB8" }}
-                />
-
-                <span
-                  className="text-[12px] font-semibold tracking-[0.5px]"
-                  style={{ color: "#315A6E" }}
-                >
-                  {companyAddress}
-                </span>
-              </li>
-
+          <div>
+            <h2 className={headingClass}>{t("footer.contact")}</h2>
+            <ul className="space-y-3">
+              {contactNumber && (
+                <li>
+                  <a href={`tel:${contactNumber.replace(/[^\d+]/g, "")}`} className={`flex items-start gap-2.5 font-semibold ${linkClass}`}>
+                    <Phone className="mt-0.5 h-4 w-4 shrink-0 text-[#008FB8]" aria-hidden="true" />
+                    {contactNumber}
+                  </a>
+                </li>
+              )}
+              {contactEmail && (
+                <li>
+                  <a href={`mailto:${contactEmail}`} className={`flex items-start gap-2.5 break-all ${linkClass}`}>
+                    <Mail className="mt-0.5 h-4 w-4 shrink-0 text-[#008FB8]" aria-hidden="true" />
+                    {contactEmail}
+                  </a>
+                </li>
+              )}
+              {whatsappNumber && (
+                <li>
+                  <a
+                    href={whatsappLink(whatsappNumber, t("help.whatsappText"))}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`flex items-start gap-2.5 font-semibold ${linkClass}`}
+                  >
+                    <FaWhatsapp className="mt-0.5 h-4 w-4 shrink-0 text-[#25D366]" aria-hidden="true" />
+                    {t("help.whatsapp")}
+                  </a>
+                </li>
+              )}
+              {companyAddress && (
+                <li className="flex items-start gap-2.5 text-[15px]">
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#008FB8]" aria-hidden="true" />
+                  <span>{companyAddress}</span>
+                </li>
+              )}
             </ul>
-          </motion.div>
-
+            <p className="mt-5 rounded-xl bg-white px-4 py-3 text-sm ring-1 ring-[#D6ECF3]">{t("footer.payments")}</p>
+            {fssaiNumber && (
+              <p className="mt-3 flex items-center gap-2 text-sm font-semibold text-[#063B5C]">
+                <BadgeCheck className="h-4 w-4 text-green-700" aria-hidden="true" />
+                {t("footer.fssai", { n: fssaiNumber })}
+              </p>
+            )}
+          </div>
         </div>
 
-        {/* Copyright */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.5 }}
-          className="pt-8 mt-8"
-          style={{
-            borderTop: "1px solid #B8DCE7",
-          }}
-        >
-          <p
-            className="text-[10px] xs:text-[11px] sm:text-xs md:text-sm lg:text-base text-center px-2 font-semibold tracking-[0.5px]"
-            style={{ color: "#315A6E" }}
-          >
-            {copyrightText}
-          </p>
-        </motion.div>
-
+        <div className="mt-10 border-t border-[#D6ECF3] pt-6 text-center text-sm">
+          {footerText && lang === "en" ? footerText : t("footer.rights", { year: new Date().getFullYear() })}
+        </div>
       </div>
     </footer>
   );

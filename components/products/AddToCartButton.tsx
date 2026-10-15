@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useCart } from '@/context/CartContext';
 import { Product, ProductVariant } from '@/types/product';
 import { ShoppingBag, Check } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface AddToCartButtonProps {
   product: Product;
@@ -11,6 +12,9 @@ interface AddToCartButtonProps {
   quantity?: number;
   onQuantityChange?: (qty: number) => void;
   compact?: boolean; // New prop for compact mode
+  /** Render only the button (the page shows its own quantity selector) */
+  buttonOnly?: boolean;
+  buttonClassName?: string;
 }
 
 export default function AddToCartButton({ 
@@ -18,8 +22,11 @@ export default function AddToCartButton({
   selectedVariant,
   quantity: externalQuantity,
   onQuantityChange,
-  compact = false // Default to false for backward compatibility
+  compact = false, // Default to false for backward compatibility
+  buttonOnly = false,
+  buttonClassName = '',
 }: AddToCartButtonProps) {
+  const { t } = useLanguage();
   const [internalQuantity, setInternalQuantity] = useState(1);
   const quantity = externalQuantity !== undefined ? externalQuantity : internalQuantity;
   const setQuantity = onQuantityChange || setInternalQuantity;  
@@ -67,6 +74,42 @@ export default function AddToCartButton({
   const isOutOfStock = selectedVariant ? selectedVariant.stock <= 0 : product.stock <= 0;
 
   // Compact mode styles
+  if (buttonOnly) {
+    return (
+      <button
+        type="button"
+        onClick={handleAddToCart}
+        disabled={isOutOfStock || isAdding}
+        className={`${buttonClassName} ${
+          isOutOfStock || isAdding
+            ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+            : isInCart
+              ? 'bg-[#EAF8FC] text-[#063B5C] ring-2 ring-inset ring-[#008FB8] hover:bg-[#d9f1f8]'
+              : 'bg-white text-[#063B5C] ring-2 ring-inset ring-[#063B5C] hover:bg-[#EAF8FC]'
+        }`}
+      >
+        {isAdding ? (
+          <>
+            <span className="h-4 w-4 animate-spin rounded-full border-b-2 border-current" aria-hidden="true" />
+            <span>{t('product.adding')}</span>
+          </>
+        ) : isOutOfStock ? (
+          <span>{t('product.outOfStock')}</span>
+        ) : isInCart ? (
+          <>
+            <Check className="h-5 w-5" aria-hidden="true" />
+            <span>{t('product.inCart')}</span>
+          </>
+        ) : (
+          <>
+            <ShoppingBag className="h-5 w-5" aria-hidden="true" />
+            <span>{t('product.addToCart')}</span>
+          </>
+        )}
+      </button>
+    );
+  }
+
   if (compact) {
     return (
       <div className="space-y-1.5">
@@ -120,19 +163,19 @@ export default function AddToCartButton({
           {isAdding ? (
             <>
               <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
-              <span>Adding...</span>
+              <span>{t('product.adding')}</span>
             </>
           ) : isOutOfStock ? (
-            <span>Out of Stock</span>
+            <span>{t('product.outOfStock')}</span>
           ) : isInCart ? (
             <>
               <Check size={12} />
-              <span>In Cart</span>
+              <span>{t('product.inCart')}</span>
             </>
           ) : (
             <>
               <ShoppingBag size={12} />
-              <span>Add to Cart</span>
+              <span>{t('product.addToCart')}</span>
             </>
           )}
         </button>
@@ -145,29 +188,31 @@ export default function AddToCartButton({
     <div className="space-y-3">
       {!isOutOfStock && (
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-sm text-[#315A6E]">Qty:</span>
-          <div className="flex items-center border border-[#B8DCE7] rounded">
+          <span className="font-semibold text-base text-[#315A6E]">{t('product.quantity')}</span>
+          <div className="flex items-center border border-[#B8DCE7] rounded-lg">
             <button
               type="button"
               onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              className="px-2 py-1 hover:bg-[#EAF8FC] transition-colors disabled:opacity-50 cursor-pointer text-sm"
+              className="flex h-10 w-10 items-center justify-center text-xl hover:bg-[#EAF8FC] transition-colors disabled:opacity-40 cursor-pointer"
               disabled={quantity <= 1}
+              aria-label="Decrease quantity"
             >
-              -
+              −
             </button>
-            <span className="px-2 py-1 min-w-8 text-center text-sm text-[#063B5C]">{quantity}</span>
+            <span className="min-w-10 px-2 text-center text-base font-semibold text-[#063B5C]" aria-live="polite">{quantity}</span>
             <button
               type="button"
               onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
-              className="px-2 py-1 hover:bg-[#EAF8FC] transition-colors disabled:opacity-50 cursor-pointer text-sm"
+              className="flex h-10 w-10 items-center justify-center text-xl hover:bg-[#EAF8FC] transition-colors disabled:opacity-40 cursor-pointer"
               disabled={quantity >= maxQuantity}
+              aria-label="Increase quantity"
             >
               +
             </button>
           </div>
-          {maxQuantity > 0 && (
-            <span className="text-xs text-[#315A6E]/70">
-              Max: {maxQuantity}
+          {maxQuantity > 0 && maxQuantity <= 10 && (
+            <span className="text-sm font-medium text-amber-700">
+              {t('product.onlyLeft', { n: maxQuantity })}
             </span>
           )}
         </div>
@@ -196,19 +241,19 @@ export default function AddToCartButton({
         {isAdding ? (
           <>
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-            <span>Adding...</span>
+            <span>{t('product.adding')}</span>
           </>
         ) : isOutOfStock ? (
-          <span>Out of Stock</span>
+          <span>{t('product.outOfStock')}</span>
         ) : isInCart ? (
           <>
             <Check size={16} />
-            <span>In Cart</span>
+            <span>{t('product.inCart')}</span>
           </>
         ) : (
           <>
             <ShoppingBag size={16} />
-            <span>Add to Cart</span>
+            <span>{t('product.addToCart')}</span>
           </>
         )}
       </button>

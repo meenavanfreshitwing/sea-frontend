@@ -33,6 +33,9 @@ import {
 import { Category } from "@/types/category";
 import CartDrawer from "@/components/CartDrawer";
 import { settingsAPI } from "@/lib/settings-api";
+import BrandWordmark from '@/components/ui/BrandWordmark';
+import LanguageSwitcher from '@/components/ui/LanguageSwitcher';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface SearchProduct {
   _id: string;
@@ -51,6 +54,7 @@ interface HeaderClientProps {
 export default function HeaderClient({
   categories,
 }: HeaderClientProps) {
+  const { t } = useLanguage();
   const { isAuthenticated, user, logout } = useAuth();
   const { cart } = useCart();
   const router = useRouter();
@@ -80,11 +84,10 @@ export default function HeaderClient({
 
   const [isShopDropdownOpen, setIsShopDropdownOpen] = useState(false);
 
-  const [siteName, setSiteName] = useState("Sea Food");
-  const [contactEmail, setContactEmail] = useState(
-    "contact@MeenavanFresh.com"
-  );
-  const [contactNumber, setContactNumber] = useState("+91 98765 43210");
+  const [siteName, setSiteName] = useState("Meenavan Fresh");
+  // Filled from store settings; hidden while empty
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactNumber, setContactNumber] = useState("");
 
   const [socialMedia, setSocialMedia] = useState({
     facebook: "",
@@ -109,8 +112,10 @@ export default function HeaderClient({
      CATEGORY DATA
   ============================================================ */
 
-  const displayedCategories = categories.slice(0, 3);
-  const dropdownCategories = categories.slice(3);
+  // Keep the desktop menu short and tidy: every category lives inside "Shop"
+  // (names can be long and the list grows; the home page shows them as a grid too)
+  const displayedCategories: Category[] = [];
+  const dropdownCategories = categories;
 
   const cartCount = cart?.totalItems || 0;
 
@@ -385,22 +390,8 @@ export default function HeaderClient({
      LOGO
   ============================================================ */
 
-  const getLogoLines = () => {
-    if (!siteName || siteName.trim() === "")
-      return { first: "", second: "" };
-    const nameParts = siteName.trim().split(" ");
-    if (nameParts.length > 1) {
-      return {
-        first: nameParts[0],
-        second: nameParts.slice(1).join(" "),
-      };
-    }
-    return { first: nameParts[0], second: "" };
-  };
 
-  const { first: logoFirstLine, second: logoSecondLine } = getLogoLines();
-
-  const categoryLabel = (name: string) => name.toUpperCase();
+  const categoryLabel = (name: string) => name;
 
   return (
     <>
@@ -414,17 +405,21 @@ export default function HeaderClient({
 
             <div className="flex items-center gap-4 xl:gap-7 text-[#EAF8FC] text-[11px] xl:text-[12px] font-semibold min-w-0">
 
-              <div className="flex items-center gap-2 min-w-0">
-                <Mail className="w-3 h-3 text-[#00A9E0] shrink-0" />
-                <span className="truncate max-w-[180px] xl:max-w-[260px]">
-                  {contactEmail}
-                </span>
-              </div>
+              {contactNumber && (
+                <a href={`tel:${contactNumber.replace(/[^\d+]/g, "")}`} className="flex items-center gap-2 shrink-0 hover:underline">
+                  <Phone className="w-3.5 h-3.5 text-[#00A9E0]" aria-hidden="true" />
+                  <span>{t('top.callUs', { phone: contactNumber })}</span>
+                </a>
+              )}
 
-              <div className="flex items-center gap-2 shrink-0">
-                <Phone className="w-3 h-3 text-[#00A9E0]" />
-                <span>{contactNumber}</span>
-              </div>
+              {contactEmail && (
+                <a href={`mailto:${contactEmail}`} className="flex items-center gap-2 min-w-0 hover:underline">
+                  <Mail className="w-3.5 h-3.5 text-[#00A9E0] shrink-0" aria-hidden="true" />
+                  <span className="truncate max-w-[180px] xl:max-w-[260px]">
+                    {contactEmail}
+                  </span>
+                </a>
+              )}
 
             </div>
 
@@ -434,7 +429,7 @@ export default function HeaderClient({
                 href="/contact"
                 className="hover:text-[#00A9E0] transition-colors"
               >
-                Contact
+                {t('nav.contact')}
               </Link>
 
               <div className="flex items-center gap-2 xl:gap-3">
@@ -505,7 +500,7 @@ export default function HeaderClient({
 
             {/* ================= LOGO ================= */}
 
-            <div className="flex items-center shrink-0 w-[150px] sm:w-[180px] lg:w-[200px] xl:w-[250px] min-w-0">
+            <div className="flex items-center shrink-0 min-w-0">
 
               <Link href="/" className="flex items-center gap-2 min-w-0">
                 <div className="relative w-[44px] h-[44px] sm:w-[52px] sm:h-[52px] lg:w-[58px] lg:h-[58px] xl:w-[68px] xl:h-[68px] shrink-0">
@@ -519,17 +514,7 @@ export default function HeaderClient({
                   />
                 </div>
 
-                <div className="flex flex-col justify-center min-w-0">
-                  <span className="text-[15px] sm:text-[17px] lg:text-[19px] xl:text-[25px] font-black tracking-[1.5px] lg:tracking-[2px] xl:tracking-[3px] text-[#063B5C] leading-none truncate">
-                    {logoFirstLine}
-                  </span>
-
-                  {logoSecondLine && (
-                    <span className="text-[10px] sm:text-[10px] lg:text-[11px] xl:text-[15px] font-bold tracking-[1px] text-[#008FB8] leading-none mt-1 truncate">
-                      {logoSecondLine}
-                    </span>
-                  )}
-                </div>
+                <BrandWordmark size="md" tagline />
               </Link>
             </div>
 
@@ -546,9 +531,7 @@ export default function HeaderClient({
                   href="/"
                   className={`
                     shrink-0
-                    text-[10px] lg:text-[11px] xl:text-[12px]
-                    font-extrabold
-                    tracking-[0.6px] lg:tracking-[0.8px]
+                    text-[15px] font-semibold
                     transition-colors
                     whitespace-nowrap
                     ${
@@ -558,7 +541,7 @@ export default function HeaderClient({
                     }
                   `}
                 >
-                  HOME
+                  {t('nav.home')}
                 </Link>
 
                 {/* INLINE CATEGORIES */}
@@ -588,9 +571,7 @@ export default function HeaderClient({
                     >
                       <span
                         className={`
-                          text-[9px] lg:text-[10px] xl:text-[11px] 2xl:text-[12px]
-                          font-extrabold
-                          tracking-[0.5px] lg:tracking-[0.7px]
+                          text-[15px] font-semibold
                           leading-[1.2] lg:leading-[1.25]
                           transition-colors
                           whitespace-normal
@@ -629,9 +610,7 @@ export default function HeaderClient({
                       aria-haspopup="true"
                       className="
                         flex items-center justify-center gap-1
-                        text-[10px] lg:text-[11px] xl:text-[12px]
-                        font-extrabold
-                        tracking-[0.6px] lg:tracking-[0.8px]
+                        text-[15px] font-semibold
                         text-[#063B5C]
                         hover:text-[#008FB8]
                         transition-colors
@@ -639,7 +618,7 @@ export default function HeaderClient({
                         cursor-pointer
                       "
                     >
-                      SHOP
+                      {t('nav.shop')}
                       <ChevronDown
                         className={`w-3 h-3 transition-transform duration-200 ${
                           isShopDropdownOpen ? "rotate-180" : ""
@@ -651,7 +630,7 @@ export default function HeaderClient({
                       <div className="absolute top-full left-1/2 -translate-x-1/2 mt-4 w-[200px] xl:w-[220px] bg-white rounded-xl shadow-2xl border border-[#B8DCE7] overflow-hidden z-[60]">
                         <div className="px-4 py-3 border-b border-[#EAF8FC] bg-[#F8FCFD]">
                           <p className="text-[10px] font-bold tracking-[1.5px] uppercase text-[#315A6E]">
-                            Shop by Category
+                            {t('nav.shopByCategory')}
                           </p>
                         </div>
 
@@ -665,8 +644,8 @@ export default function HeaderClient({
                                 className={`
                                   flex items-center w-full text-left
                                   px-3 py-2.5 rounded-lg
-                                  text-[11px] xl:text-[12px]
-                                  font-semibold
+                                  text-[14px]
+                                  font-medium
                                   transition-colors cursor-pointer
                                   ${
                                     active
@@ -693,9 +672,7 @@ export default function HeaderClient({
                   href="/about"
                   className={`
                     shrink-0
-                    text-[10px] lg:text-[11px] xl:text-[12px]
-                    font-extrabold
-                    tracking-[0.6px] lg:tracking-[0.8px]
+                    text-[15px] font-semibold
                     transition-colors
                     whitespace-nowrap
                     ${
@@ -705,7 +682,7 @@ export default function HeaderClient({
                     }
                   `}
                 >
-                  ABOUT
+                  {t('nav.about')}
                 </Link>
 
                 {/* CONTACT */}
@@ -713,9 +690,7 @@ export default function HeaderClient({
                   href="/contact"
                   className={`
                     shrink-0
-                    text-[10px] lg:text-[11px] xl:text-[12px]
-                    font-extrabold
-                    tracking-[0.6px] lg:tracking-[0.8px]
+                    text-[15px] font-semibold
                     transition-colors
                     whitespace-nowrap
                     ${
@@ -725,7 +700,7 @@ export default function HeaderClient({
                     }
                   `}
                 >
-                  CONTACT
+                  {t('nav.contact')}
                 </Link>
 
               </nav>
@@ -735,14 +710,22 @@ export default function HeaderClient({
                 RIGHT ACTIONS
             ================================================== */}
 
-<div className="flex items-center justify-end gap-3 sm:gap-4 xl:gap-5 shrink-0 ml-auto w-auto lg:w-[140px] xl:w-[200px] pr-1 sm:pr-2">
+<div className="flex items-center justify-end gap-2 sm:gap-4 xl:gap-5 shrink-0 ml-auto w-auto pr-1 sm:pr-2">
               {!showSearch ? (
                 <>
-                  {/* SEARCH */}
+                  {/* LANGUAGE */}
+                  <div className="hidden xl:block">
+                    <LanguageSwitcher />
+                  </div>
+                  <div className="xl:hidden">
+                    <LanguageSwitcher compact />
+                  </div>
+
+                  {/* SEARCH (on phones the bottom bar has Search) */}
                   <button
                     onClick={handleSearchClick}
-                    aria-label="Search"
-                    className="text-[#063B5C] hover:text-[#008FB8] transition-colors p-1"
+                    aria-label={t('nav.search')}
+                    className="hidden lg:block text-[#063B5C] hover:text-[#008FB8] transition-colors p-1"
                   >
                     <Search className="w-[18px] h-[18px]" />
                   </button>
@@ -750,7 +733,7 @@ export default function HeaderClient({
                   {/* CART */}
                   <button
                     onClick={() => setIsCartDrawerOpen(true)}
-                    aria-label="Shopping cart"
+                    aria-label={t('nav.cart')}
                     className="relative text-[#063B5C] hover:text-[#008FB8] transition-colors p-1"
                   >
                     <ShoppingCart className="w-[19px] h-[19px]" />
@@ -773,13 +756,13 @@ export default function HeaderClient({
                           border border-[#008FB8]
                           bg-[#EAF8FC]
                           text-[#063B5C]
-                          text-[10px] xl:text-[11px]
-                          font-black tracking-[1px] xl:tracking-[1.2px]
+                          text-[14px]
+                          font-semibold
                           hover:bg-[#008FB8] hover:text-white
                           transition-colors whitespace-nowrap
                         "
                       >
-                        LOGIN
+                        {t('nav.login')}
                       </span>
                     </Link>
                   ) : (
@@ -799,8 +782,8 @@ export default function HeaderClient({
                           border border-[#008FB8]
                           bg-[#EAF8FC]
                           text-[#063B5C]
-                          text-[10px]
-                          font-black tracking-[1px]
+                          text-[14px]
+                          font-semibold
                           hover:bg-[#008FB8] hover:text-white
                           transition-colors
                           max-w-[110px] xl:max-w-[130px]
@@ -819,7 +802,7 @@ export default function HeaderClient({
                             onClick={() => setIsDropdownOpen(false)}
                             className="block px-4 py-2.5 text-sm text-[#315A6E] hover:bg-[#EAF8FC] hover:text-[#008FB8]"
                           >
-                            My Orders
+                            {t('nav.myOrders')}
                           </Link>
                           <button
                             onClick={() => {
@@ -829,7 +812,7 @@ export default function HeaderClient({
                             }}
                             className="block w-full text-left px-4 py-2.5 text-sm text-[#315A6E] hover:bg-[#EAF8FC] hover:text-[#008FB8]"
                           >
-                            Logout
+                            {t('nav.logout')}
                           </button>
                         </div>
                       )}
@@ -853,7 +836,7 @@ export default function HeaderClient({
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search..."
+                        placeholder={t('search.placeholder')}
                         className="flex-1 min-w-0 bg-transparent outline-none text-xs text-[#063B5C]"
                       />
                       {searchQuery && (
@@ -871,7 +854,7 @@ export default function HeaderClient({
                       type="submit"
                       className="h-9 px-2.5 bg-[#008FB8] hover:bg-[#00A9E0] text-white rounded-lg text-[10px] font-bold"
                     >
-                      Go
+                      {t('search.go')}
                     </button>
 
                     <button
@@ -893,7 +876,7 @@ export default function HeaderClient({
                         <div className="p-6 text-center">
                           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#008FB8] mx-auto" />
                           <p className="mt-2 text-xs text-[#315A6E]">
-                            Searching...
+                            {t('search.searching')}
                           </p>
                         </div>
                       ) : (
@@ -954,7 +937,7 @@ export default function HeaderClient({
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className="lg:hidden text-[#063B5C] hover:text-[#008FB8] p-1"
-                aria-label="Menu"
+                aria-label={t('nav.menu')}
               >
                 {isMenuOpen ? (
                   <X className="w-5 h-5" />
@@ -994,40 +977,34 @@ export default function HeaderClient({
                     className="object-contain"
                   />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-base font-black tracking-[1.5px] text-[#063B5C] leading-none truncate">
-                    {logoFirstLine}
-                  </p>
-                  {logoSecondLine && (
-                    <p className="text-[10px] font-bold tracking-[1px] text-[#008FB8] mt-1 truncate">
-                      {logoSecondLine}
-                    </p>
-                  )}
-                </div>
+                <BrandWordmark size="sm" />
               </Link>
 
               <button
                 onClick={() => setIsMenuOpen(false)}
                 className="text-[#315A6E] shrink-0"
-                aria-label="Close menu"
+                aria-label={t('nav.closeMenu')}
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <nav className="h-[calc(100%-72px)] overflow-y-auto p-4">
+              <div className="mb-3 flex justify-center border-b border-[#B8DCE7] pb-4">
+                <LanguageSwitcher />
+              </div>
               <Link
                 href="/"
                 onClick={() => setIsMenuOpen(false)}
-                className="flex items-center gap-3 py-3 text-sm font-extrabold tracking-[1px] text-[#063B5C]"
+                className="flex items-center gap-3 py-3 text-base font-semibold text-[#063B5C]"
               >
                 <Home className="w-4 h-4 text-[#008FB8]" />
-                HOME
+                {t('nav.home')}
               </Link>
 
               <div className="mt-4 mb-2 px-1">
-                <p className="text-[10px] font-bold uppercase tracking-[2px] text-[#315A6E]">
-                  Shop by Category
+                <p className="text-xs font-bold uppercase tracking-wider text-[#315A6E]">
+                  {t('nav.shopByCategory')}
                 </p>
               </div>
 
@@ -1041,7 +1018,7 @@ export default function HeaderClient({
                       className={`
                         flex items-center gap-3 w-full text-left
                         py-2.5 px-3 rounded-lg
-                        text-xs font-semibold tracking-[0.4px]
+                        text-[15px] font-medium
                         transition-colors
                         ${
                           active
@@ -1052,7 +1029,7 @@ export default function HeaderClient({
                     >
                       <span className="w-1.5 h-1.5 rounded-full bg-[#008FB8] shrink-0" />
                       <span className="truncate">
-                        {cat.name.toUpperCase()}
+                        {cat.name}
                       </span>
                     </button>
                   );
@@ -1062,39 +1039,39 @@ export default function HeaderClient({
               <Link
                 href="/about"
                 onClick={() => setIsMenuOpen(false)}
-                className="flex items-center gap-3 py-3 mt-4 border-t border-[#B8DCE7] text-sm font-extrabold tracking-[1px] text-[#063B5C]"
+                className="flex items-center gap-3 py-3 mt-4 border-t border-[#B8DCE7] text-base font-semibold text-[#063B5C]"
               >
                 <Info className="w-4 h-4 text-[#008FB8]" />
-                ABOUT
+                {t('nav.about')}
               </Link>
 
               <Link
                 href="/contact"
                 onClick={() => setIsMenuOpen(false)}
-                className="flex items-center gap-3 py-3 text-sm font-extrabold tracking-[1px] text-[#063B5C]"
+                className="flex items-center gap-3 py-3 text-base font-semibold text-[#063B5C]"
               >
                 <MapPin className="w-4 h-4 text-[#008FB8]" />
-                CONTACT
+                {t('nav.contact')}
               </Link>
 
               {!isAuthenticated ? (
                 <Link
                   href="/login"
                   onClick={() => setIsMenuOpen(false)}
-                  className="flex items-center gap-3 py-3 border-t border-[#B8DCE7] mt-2 text-sm font-extrabold tracking-[1px] text-[#063B5C]"
+                  className="flex items-center gap-3 py-3 border-t border-[#B8DCE7] mt-2 text-base font-semibold text-[#063B5C]"
                 >
                   <User className="w-4 h-4 text-[#008FB8]" />
-                  LOGIN
+                  {t('nav.login')}
                 </Link>
               ) : (
                 <>
                   <Link
                     href="/profile"
                     onClick={() => setIsMenuOpen(false)}
-                    className="flex items-center gap-3 py-3 border-t border-[#B8DCE7] mt-2 text-sm font-extrabold tracking-[1px] text-[#063B5C]"
+                    className="flex items-center gap-3 py-3 border-t border-[#B8DCE7] mt-2 text-base font-semibold text-[#063B5C]"
                   >
                     <User className="w-4 h-4 text-[#008FB8]" />
-                    MY ACCOUNT
+                    {t('nav.myAccount')}
                   </Link>
                   <button
                     onClick={() => {
@@ -1102,9 +1079,9 @@ export default function HeaderClient({
                       logout();
                       router.push("/");
                     }}
-                    className="flex items-center gap-3 w-full text-left py-3 text-sm font-extrabold tracking-[1px] text-[#063B5C]"
+                    className="flex items-center gap-3 w-full text-left py-3 text-base font-semibold text-[#063B5C]"
                   >
-                    LOGOUT
+                    {t('nav.logout')}
                   </button>
                 </>
               )}
@@ -1128,7 +1105,7 @@ export default function HeaderClient({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search products..."
+                  placeholder={t('search.placeholder')}
                   className="flex-1 min-w-0 bg-transparent outline-none text-sm text-[#063B5C]"
                 />
                 {searchQuery && (
@@ -1165,7 +1142,7 @@ export default function HeaderClient({
                   <div className="p-8 text-center">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#008FB8] mx-auto" />
                     <p className="mt-2 text-sm text-[#315A6E]">
-                      Searching...
+                      {t('search.searching')}
                     </p>
                   </div>
                 ) : (
@@ -1213,7 +1190,7 @@ export default function HeaderClient({
                       onClick={handleViewAllResults}
                       className="w-full border-t border-[#B8DCE7] py-3 text-sm font-semibold text-[#008FB8] bg-[#F8FCFD]"
                     >
-                      View all results
+                      {t('search.viewAll')}
                     </button>
                   </>
                 )}
@@ -1236,8 +1213,8 @@ export default function HeaderClient({
             }`}
           >
             <Home className="w-4 h-4 mb-0.5" />
-            <span className="text-[10px] font-medium truncate w-full text-center px-1">
-              Home
+            <span className="text-[11px] font-medium truncate w-full text-center px-1">
+              {t('nav.home')}
             </span>
           </Link>
 
@@ -1246,8 +1223,8 @@ export default function HeaderClient({
             className="flex-1 h-full flex flex-col items-center justify-center text-[#063B5C] min-w-0"
           >
             <Search className="w-4 h-4 mb-0.5" />
-            <span className="text-[10px] font-medium truncate w-full text-center px-1">
-              Search
+            <span className="text-[11px] font-medium truncate w-full text-center px-1">
+              {t('nav.search')}
             </span>
           </button>
 
@@ -1261,8 +1238,8 @@ export default function HeaderClient({
                 {cartCount > 9 ? "9+" : cartCount}
               </span>
             )}
-            <span className="text-[10px] font-medium truncate w-full text-center px-1">
-              Cart
+            <span className="text-[11px] font-medium truncate w-full text-center px-1">
+              {t('nav.cart')}
             </span>
           </button>
 
@@ -1275,8 +1252,8 @@ export default function HeaderClient({
             }`}
           >
             <Info className="w-4 h-4 mb-0.5" />
-            <span className="text-[10px] font-medium truncate w-full text-center px-1">
-              About
+            <span className="text-[11px] font-medium truncate w-full text-center px-1">
+              {t('nav.aboutShort')}
             </span>
           </Link>
 
@@ -1292,8 +1269,8 @@ export default function HeaderClient({
               <div className="w-4 h-4 rounded-full bg-[#008FB8] text-white flex items-center justify-center text-[9px] font-bold mb-0.5">
                 {getUserInitial()}
               </div>
-              <span className="text-[10px] font-medium truncate w-full text-center px-1">
-                Account
+              <span className="text-[11px] font-medium truncate w-full text-center px-1">
+                {t('nav.account')}
               </span>
             </Link>
           ) : (
@@ -1306,8 +1283,8 @@ export default function HeaderClient({
               }`}
             >
               <User className="w-4 h-4 mb-0.5" />
-              <span className="text-[10px] font-medium truncate w-full text-center px-1">
-                Login
+              <span className="text-[11px] font-medium truncate w-full text-center px-1">
+                {t('nav.loginShort')}
               </span>
             </Link>
           )}

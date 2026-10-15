@@ -9,6 +9,10 @@ import { useEffect, useState, useCallback } from 'react';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import Footer from '@/components/Footer';
+import ProductReviews from '@/components/reviews/ProductReviews';
+import { Stars } from '@/components/reviews/StarRating';
+import { useLanguage } from '@/context/LanguageContext';
+import HelpLine from '@/components/HelpLine';
 
 interface ClientProductDetailProps {
   product: Product;
@@ -25,7 +29,7 @@ interface MobileFloatingButtonProps {
 
 // Helper function to get correct image URL
 const getImageUrl = (imagePath: string | undefined): string => {
-  if (!imagePath) return '/placeholder-image.jpg';
+  if (!imagePath) return '/no-photo.svg';
 
   if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
     return imagePath;
@@ -47,12 +51,17 @@ const getImageUrl = (imagePath: string | undefined): string => {
   return imageUrl;
 };
 
+// Add to Cart and Buy Now share this so they are always the same size
+const ACTION_BUTTON =
+  'flex h-12 w-full items-center justify-center gap-2 rounded-xl px-3 text-[15px] font-semibold shadow-sm transition-colors';
+
 const MobileFloatingButton = ({
   product,
   selectedVariant,
   isVisible,
   onAddToCart
 }: MobileFloatingButtonProps) => {
+  const { t } = useLanguage();
   const router = useRouter();
   const { user } = useAuth();
   const [addingToCart, setAddingToCart] = useState(false);
@@ -118,7 +127,7 @@ const MobileFloatingButton = ({
       <div className="border-t border-[#176B8C]" style={{ backgroundColor: '#064B6A', color: '#EAF8FC' }}>
         {/* QUANTITY ROW - COMPACT */}
         <div className="flex items-center justify-between px-3 py-1.5 border-b border-[#176B8C]" style={{ backgroundColor: '#064B6A', color: '#EAF8FC' }}>
-          <span className="text-xs font-medium" style={{ color: '#EAF8FC' }}>Quantity:</span>
+          <span className="text-xs font-medium" style={{ color: '#EAF8FC' }}>{t('product.quantity')}</span>
           <div className="flex items-center gap-1">
             <button
               onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
@@ -170,13 +179,13 @@ const MobileFloatingButton = ({
             {addingToCart ? (
               <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></div>
             ) : showAddedMessage ? (
-              <span className="text-xs font-medium animate-pulse">Added! ✓</span>
+              <span className="text-xs font-medium animate-pulse">{t('product.added')} ✓</span>
             ) : (
               <>
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
-                <span className="text-xs font-medium">Cart</span>
+                <span className="text-xs font-medium">{t('product.addToCart')}</span>
               </>
             )}
           </button>
@@ -210,7 +219,7 @@ const MobileFloatingButton = ({
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                 </svg>
-                <span className="text-xs font-medium">Buy</span>
+                <span className="text-xs font-medium">{t('product.buyNow')}</span>
               </>
             )}
           </button>
@@ -223,7 +232,7 @@ const MobileFloatingButton = ({
 // Structured Data Component (JSON-LD)
 const ProductStructuredData = ({ product, selectedVariant }: { product: Product, selectedVariant: ProductVariant | null }) => {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || '';
-  const storeName = process.env.NEXT_PUBLIC_SITE_NAME || '';
+  const storeName = process.env.NEXT_PUBLIC_SITE_NAME || 'Meenavan Fresh';
 
   const displayPrice = selectedVariant ? selectedVariant.price : (product?.basePrice || 0);
 
@@ -263,7 +272,7 @@ const ProductStructuredData = ({ product, selectedVariant }: { product: Product,
         "name": (product as any)?.seller || storeName
       }
     },
-    "category": product?.category && typeof product.category === 'object' ? product.category.name : "Farm Tools",
+    "category": product?.category && typeof product.category === 'object' ? product.category.name : "Fresh Fish",
   };
 
   const breadcrumbData = {
@@ -279,7 +288,7 @@ const ProductStructuredData = ({ product, selectedVariant }: { product: Product,
       {
         "@type": "ListItem",
         "position": 2,
-        "name": "Farm Tools",
+        "name": "Fresh Fish",
         "item": `${siteUrl}/products`
       },
       {
@@ -332,6 +341,7 @@ const formatWeightDisplay = (weight: number, unit: string): string => {
 };
 
 export default function ClientProductDetail({ product, randomProducts }: ClientProductDetailProps) {
+  const { t } = useLanguage();
   const [quantity, setQuantity] = useState(1);
   const [showFloatingButton, setShowFloatingButton] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -454,8 +464,8 @@ export default function ClientProductDetail({ product, randomProducts }: ClientP
     return (
       <div className="min-h-screen bg-[#F8FCFD] flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-xl font-bold text-[#063B5C]">Product not found</h1>
-          <p className="text-[#315A6E] mt-2">The product you are looking for does not exist.</p>
+          <h1 className="text-xl font-bold text-[#063B5C]">{t('product.notFound')}</h1>
+          <p className="text-[#315A6E] mt-2">{t('product.notFoundText')}</p>
         </div>
       </div>
     );
@@ -498,7 +508,7 @@ export default function ClientProductDetail({ product, randomProducts }: ClientP
                           onError={(e) => {
                             console.error('Image failed to load:', e);
                             const target = e.target as HTMLImageElement;
-                            target.src = '/placeholder-image.jpg';
+                            target.src = '/no-photo.svg';
                           }}
                         />
 
@@ -570,7 +580,7 @@ export default function ClientProductDetail({ product, randomProducts }: ClientP
                     sizes="(max-width: 480px) 48px, (max-width: 640px) 56px, (max-width: 768px) 64px, (max-width: 1024px) 80px, 96px"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
-                      target.src = '/placeholder-image.jpg';
+                      target.src = '/no-photo.svg';
                     }}
                   />
                 ) : (
@@ -611,10 +621,22 @@ export default function ClientProductDetail({ product, randomProducts }: ClientP
                   )}
                 </h1>
 
+                {/* Star summary links to the reviews section */}
+                {(product.numberOfReviews ?? 0) > 0 && (
+                  <a href="#reviews" className="inline-flex items-center gap-2 text-sm text-[#315A6E] hover:underline">
+                    <Stars value={product.rating ?? 0} size={16} />
+                    <span>
+                      {product.numberOfReviews === 1
+                        ? t('product.reviewsCountOne', { rating: (product.rating ?? 0).toFixed(1) })
+                        : t('product.reviewsCount', { rating: (product.rating ?? 0).toFixed(1), n: product.numberOfReviews ?? 0 })}
+                    </span>
+                  </a>
+                )}
+
                 {/* Variant Selection - Optimized */}
                 {product.variants && product.variants.length > 0 && (
                   <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-[#063B5C]">Select Weight:</h3>
+                    <h3 className="text-sm font-medium text-[#063B5C]">{t('product.selectWeight')}</h3>
                     <div className="flex flex-wrap gap-2">
                       {product.variants.map((variant) => {
                         let weightDisplay = '';
@@ -672,87 +694,78 @@ export default function ClientProductDetail({ product, randomProducts }: ClientP
                     <span className="text-xl sm:text-2xl font-bold text-[#063B5C]">
                       ₹{displayPrice.toLocaleString('en-IN')}
                     </span>
+                    {selectedVariant?.weight && selectedVariant?.weightUnit ? (
+                      <span className="text-base font-medium text-[#315A6E]">
+                        {t('product.perWeight', { weight: formatWeightDisplay(selectedVariant.weight, selectedVariant.weightUnit) })}
+                      </span>
+                    ) : null}
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="px-2 py-0.5 rounded-full text-xs" style={{ backgroundColor: 'rgba(0, 143, 184, 0.1)', color: '#008FB8' }}>
-                      Tax included. Shipping calculated at checkout.
+                      {t('product.taxNote')}
                     </span>
                   </div>
                 </div>
 
-<div className="pt-2">
-  <div className="max-w-sm">
-    {/* Desktop Add to Cart Button - Two buttons side by side */}
-    <div className="hidden lg:block">
-      <div className="flex gap-3">
-        {/* Add to Cart Button */}
-        <div className="flex-1">
-          <AddToCartButton 
-            product={product} 
-            selectedVariant={selectedVariant || undefined}
-            quantity={quantity}
-            onQuantityChange={setQuantity}
-          />
-        </div>
-
-        {/* Buy Now Button - Exact same size as AddToCart */}
-        <div className="flex-1">
-          <button
-            onClick={handleBuyNow}
-            disabled={currentStock <= 0}
-            className={`
-              w-full py-2 px-4 rounded-lg font-medium flex items-center justify-center gap-2 mt-10
-              transition-all duration-300 shadow cursor-pointer text-sm
-              ${currentStock <= 0 
-                ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
-                : 'bg-[#063B5C] text-white '
-              }
-            `}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-            </svg>
-            Buy Now
-          </button>
-        </div>
+{/* Quantity, then two equal buttons (same layout on phone and desktop) */}
+<div className="space-y-4 pt-2">
+  {currentStock > 0 && (
+    <div className="flex flex-wrap items-center gap-3">
+      <span className="text-base font-semibold text-[#315A6E]">{t('product.quantity')}</span>
+      <div className="flex items-center rounded-xl border border-[#B8DCE7] bg-white">
+        <button
+          type="button"
+          onClick={() => setQuantity(Math.max(1, quantity - 1))}
+          disabled={quantity <= 1}
+          aria-label={t('cart.decrease')}
+          className="flex h-11 w-11 items-center justify-center rounded-l-xl text-xl text-[#063B5C] hover:bg-[#EAF8FC] disabled:opacity-40"
+        >
+          −
+        </button>
+        <span className="min-w-10 text-center text-lg font-semibold text-[#063B5C]" aria-live="polite">{quantity}</span>
+        <button
+          type="button"
+          onClick={() => setQuantity(Math.min(currentStock, quantity + 1))}
+          disabled={quantity >= currentStock}
+          aria-label={t('cart.increase')}
+          className="flex h-11 w-11 items-center justify-center rounded-r-xl text-xl text-[#063B5C] hover:bg-[#EAF8FC] disabled:opacity-40"
+        >
+          +
+        </button>
       </div>
+      {currentStock <= 10 && (
+        <span className="text-sm font-medium text-amber-700">{t('product.onlyLeft', { n: currentStock })}</span>
+      )}
     </div>
+  )}
 
-    {/* Mobile Add to Cart & Buy Now - Single Row - Same Size */}
-    <div className="lg:hidden">
-      <div className="flex gap-2">
-        {/* Add to Cart Button - 50% width */}
-        <div className="flex-1">
-          <AddToCartButton 
-            product={product} 
-            selectedVariant={selectedVariant || undefined}
-            quantity={quantity}
-            onQuantityChange={setQuantity}
-          />
-        </div>
-
-        {/* Buy Now Button - 50% width - Same size as AddToCart */}
-        <div className="flex-1">
-          <button
-            onClick={handleBuyNow}
-            disabled={currentStock <= 0}
-            className={`
-              w-full min-h-[38px] py-2 px-3 rounded-lg font-semibold text-sm
-              transition-colors duration-200 flex items-center justify-center gap-1.5 mt-10.5
-              ${currentStock <= 0 
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                : 'bg-[#063B5C] text-white hover:bg-[#064B6A] active:bg-[#008FB8]'
-              }
-            `}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-            </svg>
-            Buy Now
-          </button>
-        </div>
-      </div>
-    </div>
+  <div className="grid max-w-md grid-cols-2 gap-3">
+    <AddToCartButton
+      product={product}
+      selectedVariant={selectedVariant || undefined}
+      quantity={quantity}
+      onQuantityChange={setQuantity}
+      buttonOnly
+      buttonClassName={ACTION_BUTTON}
+    />
+    <button
+      type="button"
+      onClick={handleBuyNow}
+      disabled={currentStock <= 0}
+      className={`${ACTION_BUTTON} ${
+        currentStock <= 0
+          ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+          : 'bg-[#063B5C] text-white hover:bg-[#0B4F8A]'
+      }`}
+    >
+      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+      </svg>
+      {t('product.buyNow')}
+    </button>
+  </div>
+  <div className="max-w-md lg:hidden">
+    <HelpLine />
   </div>
 </div>
 
@@ -761,7 +774,7 @@ export default function ClientProductDetail({ product, randomProducts }: ClientP
                   {/* Specifications */}
                   {specifications.length > 0 && (
                     <div className="space-y-3">
-                      <h3 className="text-sm font-medium text-[#063B5C]">Specifications</h3>
+                      <h3 className="text-sm font-medium text-[#063B5C]">{t('product.specifications')}</h3>
                       <div className="space-y-1">
                         {specifications.map((spec: any, index: number) => (
                           <div key={index} className="flex text-sm">
@@ -776,7 +789,7 @@ export default function ClientProductDetail({ product, randomProducts }: ClientP
                   {/* Key Features */}
                   {(selectedVariant?.features && selectedVariant.features.length > 0) || keyFeatures.length > 0 ? (
                     <div className="space-y-2">
-                      <h3 className="text-sm font-medium text-[#063B5C]">Key Features</h3>
+                      <h3 className="text-sm font-medium text-[#063B5C]">{t('product.keyFeatures')}</h3>
                       <ul className="space-y-1">
                         {selectedVariant?.features && selectedVariant.features.length > 0 && (
                           selectedVariant.features.map((feature, index) => (
@@ -800,7 +813,7 @@ export default function ClientProductDetail({ product, randomProducts }: ClientP
 
                   {/* Description */}
                   <div>
-                    <h3 className="text-sm font-medium text-[#063B5C] mb-1">Description</h3>
+                    <h3 className="text-sm font-medium text-[#063B5C] mb-1">{t('product.description')}</h3>
                     <p className="text-[#315A6E] text-sm leading-relaxed">
                       {selectedVariant?.description || product.description}
                     </p>
@@ -810,10 +823,15 @@ export default function ClientProductDetail({ product, randomProducts }: ClientP
             </div>
           </div>
 
+          {/* Customer reviews */}
+          <div className="px-3 sm:px-8">
+            <ProductReviews productId={product._id} />
+          </div>
+
           {/* Related Products */}
           {randomProducts && randomProducts.length > 0 && (
             <div className="p-3 sm:p-8 mt-5 border-t border-[#B8DCE7] bg-white">
-              <h2 className="text-base font-bold text-[#063B5C] mb-2 text-center">You may also like</h2>
+              <h2 className="text-base font-bold text-[#063B5C] mb-2 text-center">{t('product.youMayAlsoLike')}</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                 {randomProducts.slice(0, 4).map((relatedProduct) => (
                   <div key={relatedProduct._id} className="scale-95">

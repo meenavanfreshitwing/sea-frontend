@@ -21,6 +21,8 @@ export interface ProductVariant {
 }
 
 export interface Product {
+  rating?: number;          // average of published reviews (1-5)
+  numberOfReviews?: number;
   _id: string;
   name: string;
   slug: string;

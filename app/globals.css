@@ -1,1 +1,28 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-jakarta), var(--font-tamil), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* The page only ever scrolls up and down */
+html,
+body {
+  overflow-x: clip;
+}
+
+body {
+  font-family: var(--font-jakarta), var(--font-tamil), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Tamil has no capital letters and long words: drop all-caps styling and
+   wide letter-spacing, and give lines a little more height. */
+html.lang-ta [class*="tracking-"],
+html.lang-ta .uppercase {
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+html.lang-ta body {
+  line-height: 1.6;
+}

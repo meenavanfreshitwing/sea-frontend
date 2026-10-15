@@ -2,12 +2,14 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { formatDeliveryDate } from '@/lib/booking-api';
+import { useLanguage } from '@/context/LanguageContext';
+import { dateLocale } from '@/lib/i18n/translations';
 
 export default function OrderSuccessPage() {
-  const router = useRouter();
+  const { t, lang } = useLanguage();
   const [orderId, setOrderId] = useState<string | null>(null);
-  const [countdown, setCountdown] = useState(10);
+  const [deliveryDate, setDeliveryDate] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +27,8 @@ export default function OrderSuccessPage() {
       // Get orderId from URL parameters
       const urlParams = new URLSearchParams(window.location.search);
       const orderIdParam = urlParams.get('orderId');
+      const deliveryDateParam = urlParams.get('deliveryDate');
+      if (deliveryDateParam && /^\d{4}-\d{2}-\d{2}$/.test(deliveryDateParam)) setDeliveryDate(deliveryDateParam);
       
       if (orderIdParam) {
         setOrderId(orderIdParam);
@@ -44,30 +48,6 @@ export default function OrderSuccessPage() {
     }
   }, [isClient]);
 
-  // Countdown effect
-  useEffect(() => {
-    if (!orderId) return;
-
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [orderId]);
-
-  // Separate effect for redirect when countdown reaches 0
-  useEffect(() => {
-    if (countdown === 0 && orderId) {
-      router.push('/');
-    }
-  }, [countdown, orderId, router]);
-
   // Show loading state
   if (loading) {
     return (
@@ -75,7 +55,7 @@ export default function OrderSuccessPage() {
         <div className="container mx-auto px-4">
           <div className="max-w-2xl mx-auto text-center bg-white rounded-lg shadow-md p-8 border border-[#B8DCE7]">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#008FB8] mx-auto mb-4"></div>
-            <p className="text-[#315A6E]">Loading order details...</p>
+            <p className="text-[#315A6E]">{t('success.loading')}</p>
           </div>
         </div>
       </div>
@@ -94,7 +74,7 @@ export default function OrderSuccessPage() {
               </svg>
             </div>
             
-            <h1 className="text-2xl font-bold text-[#063B5C] mb-4">Something went wrong</h1>
+            <h1 className="text-2xl font-bold text-[#063B5C] mb-4">{t('success.error')}</h1>
             
             <p className="text-[#315A6E] mb-6">
               {error}
@@ -106,7 +86,7 @@ export default function OrderSuccessPage() {
                 className="text-white px-6 py-3 rounded-lg transition-all duration-200 font-medium text-center shadow-md hover:shadow-lg"
                 style={{ backgroundColor: '#064B6A' }}
               >
-                Return to Home
+                {t('success.home')}
               </Link>
               <Link 
                 href="/cart"
@@ -121,7 +101,7 @@ export default function OrderSuccessPage() {
                   e.currentTarget.style.color = '#008FB8';
                 }}
               >
-                Back to Cart
+                {t('checkout.backToCart')}
               </Link>
             </div>
           </div>
@@ -130,69 +110,49 @@ export default function OrderSuccessPage() {
     );
   }
 
-  // Show success state
+  // Show success state (stays on screen so the customer can note the order number)
   return (
     <div className="min-h-screen bg-[#F8FCFD] flex items-center justify-center py-12">
       <div className="container mx-auto px-4">
-        <div className="max-w-2xl mx-auto text-center bg-white rounded-lg shadow-md p-8 border border-[#B8DCE7]">
-          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border" style={{ backgroundColor: '#008FB8/10', borderColor: '#008FB8/20' }}>
-            <svg className="w-8 h-8" style={{ color: '#008FB8' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        <div className="max-w-xl mx-auto text-center bg-white rounded-2xl shadow-md p-6 sm:p-8 border border-[#B8DCE7]">
+          <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 bg-green-100">
+            <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          
-          <h1 className="text-3xl font-bold text-[#063B5C] mb-4">Order Placed Successfully!</h1>
-          
-          <p className="text-[#315A6E] mb-2">
-            Thank you for your purchase. Your order has been confirmed and will be shipped soon.
-          </p>
-          <p className="text-[#315A6E] mb-6">
-            Order ID: <span className="font-mono font-semibold text-[#063B5C]">#{orderId}</span>
-          </p>
 
-          <div className="space-y-4 mb-8">
-            <div className="rounded-lg p-4" style={{ backgroundColor: '#008FB8/10', border: '1px solid #008FB8/20' }}>
-              <p className="text-sm" style={{ color: '#008FB8' }}>
-                You will receive an order confirmation email shortly with all the details.
-              </p>
-              <p className="text-[#315A6E] text-sm mt-2 font-medium">
-                {countdown > 0 ? `Redirecting to home page in ${countdown} seconds...` : 'Redirecting now...'}
-              </p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#063B5C] mb-2">{t('success.title')}</h1>
+          <p className="text-base text-[#315A6E] mb-6">{t('success.text')}</p>
+
+          <dl className="mb-6 divide-y divide-[#E3F1F6] rounded-xl border border-[#B8DCE7] text-left">
+            <div className="flex items-center justify-between gap-4 px-4 py-3">
+              <dt className="text-[#315A6E]">{t('success.orderNumber')}</dt>
+              <dd className="font-mono font-semibold text-[#063B5C] break-all">#{orderId}</dd>
             </div>
-          </div>
+            {deliveryDate && (
+              <div className="flex items-center justify-between gap-4 px-4 py-3">
+                <dt className="text-[#315A6E]">{t('success.deliveryDate')}</dt>
+                <dd className="font-semibold text-[#063B5C]">{formatDeliveryDate(deliveryDate, { weekday: 'long', month: 'long' }, dateLocale(lang))}</dd>
+              </div>
+            )}
+          </dl>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link 
-              href="/products"
-              className="text-white px-6 py-3 rounded-lg transition-all duration-200 font-medium text-center shadow-md hover:shadow-lg"
-              style={{ backgroundColor: '#064B6A' }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#008FB8';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#064B6A';
-              }}
+          <p className="mb-6 text-sm text-[#315A6E]">
+            {t('success.checkLater')}
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link
+              href="/profile"
+              className="min-h-[48px] inline-flex items-center justify-center text-white px-6 py-3 rounded-xl font-semibold shadow-md hover:shadow-lg bg-[#064B6A] hover:bg-[#008FB8] transition-colors"
             >
-              Continue Shopping
+              {t('success.viewOrders')}
             </Link>
-            <Link 
-              href="/"
-              className="px-6 py-3 rounded-lg transition-all duration-200 font-medium text-center"
-              style={{ border: '1px solid #008FB8', color: '#008FB8' }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#008FB8';
-                e.currentTarget.style.color = 'white';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = '#008FB8';
-              }}
-              onClick={(e) => {
-                e.preventDefault();
-                router.push('/');
-              }}
+            <Link
+              href="/products"
+              className="min-h-[48px] inline-flex items-center justify-center px-6 py-3 rounded-xl font-semibold border border-[#008FB8] text-[#008FB8] hover:bg-[#008FB8] hover:text-white transition-colors"
             >
-              Go to Home Now
+              {t('common.continueShopping')}
             </Link>
           </div>
         </div>

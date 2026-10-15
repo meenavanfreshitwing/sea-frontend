@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Image from "next/image";
 import { useState, useEffect } from 'react';
 import { isAuthenticated } from '@/lib/otpAuth';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -63,6 +64,7 @@ const getVariantDisplayName = (item: any): string | null => {
 };
 
 export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
+  const { t } = useLanguage();
   const { cart, updateCartItem, removeFromCart, clearCart, isGuest } = useCart();
   const router = useRouter();
   const [removingItems, setRemovingItems] = useState<string[]>([]);
@@ -150,7 +152,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
         <div className="flex-shrink-0">
           <div className="flex items-center justify-between px-6 py-4 border-b border-[#B8DCE7]/50 bg-white">
             <h2 className="text-lg font-bold text-[#063B5C] flex items-center gap-2">
-              Your Cart 
+              {t('cart.title')} 
               <span className="text-xs px-2 py-0.5 rounded-full bg-[#EAF8FC] text-[#008FB8] font-semibold">
                 {itemCount}
               </span>
@@ -173,7 +175,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                 🛒 Browsing as Guest
               </p>
               <Link href="/signup" className="font-bold underline hover:opacity-80" style={{ color: '#008FB8' }}>
-                Sign up to save
+                {t('cart.signupToSave')}
               </Link>
             </div>
           )}
@@ -188,14 +190,14 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                 </svg>
               </div>
-              <p className="text-[#063B5C] font-semibold text-base mb-1">Your cart is empty</p>
-              <p className="text-[#315A6E]/70 text-xs mb-6">Looks like you haven't added anything to your cart yet.</p>
+              <p className="text-[#063B5C] font-semibold text-base mb-1">{t('cart.emptyTitle')}</p>
+              <p className="text-[#315A6E]/70 text-xs mb-6">{t('cart.emptyText')}</p>
               <button
                 onClick={onClose}
                 className="px-6 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer text-white shadow-sm"
                 style={{ backgroundColor: '#064B6A' }}
               >
-                Continue Shopping
+                {t('common.continueShopping')}
               </button>
             </div>
           ) : (
@@ -240,7 +242,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                             onClick={() => handleRemoveItem(item._id)}
                             disabled={isRemoving}
                             className="text-[#315A6E]/50 hover:text-red-600 disabled:opacity-50 p-1 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
-                            aria-label="Remove item"
+                            aria-label={t('cart.remove')}
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -307,7 +309,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                     disabled={isClearing}
                     className="text-xs text-red-600 hover:text-red-800 disabled:opacity-50 font-semibold transition-colors cursor-pointer underline"
                   >
-                    {isClearing ? 'Clearing...' : 'Clear entire cart'}
+                    {isClearing ? t('cart.clearing') : t('cart.clear')}
                   </button>
                 </div>
               )}
@@ -321,19 +323,19 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             {/* Order Summary */}
             <div className="space-y-1.5 mb-3 bg-[#F8FCFD] p-3 rounded-2xl border border-[#B8DCE7]/40">
               <div className="flex justify-between text-xs">
-                <span className="text-[#315A6E]">Subtotal ({itemCount} {itemCount === 1 ? 'item' : 'items'})</span>
+                <span className="text-[#315A6E]">{t('cart.subtotal', { n: itemCount })}</span>
                 <span className="text-[#063B5C] font-semibold">₹{subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-[#315A6E]">Shipping</span>
-                <span className="font-bold" style={{ color: '#008FB8' }}>FREE</span>
+                <span className="text-[#315A6E]">{t('cart.delivery')}</span>
+                <span className="font-bold" style={{ color: '#008FB8' }}>{t('common.free')}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-[#315A6E]">Tax (5%)</span>
+                <span className="text-[#315A6E]">{t('cart.tax')}</span>
                 <span className="text-[#063B5C] font-semibold">₹{tax.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm font-bold pt-2 border-t border-[#B8DCE7]/60 mt-1">
-                <span className="text-[#063B5C]">Total Amount</span>
+                <span className="text-[#063B5C]">{t('cart.total')}</span>
                 <span className="text-[#063B5C]">₹{total.toFixed(2)}</span>
               </div>
             </div>
@@ -351,14 +353,14 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                   e.currentTarget.style.backgroundColor = '#064B6A';
                 }}
               >
-                Proceed to Checkout
+                {t('cart.checkout')}
               </button>
               
               <button
                 onClick={onClose}
                 className="w-full py-2.5 text-xs text-[#315A6E] hover:text-[#063B5C] hover:bg-[#EAF8FC] rounded-xl font-medium transition-colors cursor-pointer"
               >
-                Continue Shopping
+                {t('common.continueShopping')}
               </button>
             </div>
           </div>

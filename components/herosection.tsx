@@ -1,450 +1,268 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { ArrowRight, Phone, ShieldCheck, Snowflake, Truck } from 'lucide-react';
+import { FaWhatsapp } from 'react-icons/fa';
 import { getAllProducts } from '@/lib/productService';
+import { settingsAPI } from '@/lib/settings-api';
+import { formatWeight } from '@/lib/weight';
+import { whatsappLink } from '@/components/HelpButton';
 import { Product } from '@/types/product';
+import { useLanguage } from '@/context/LanguageContext';
 
-interface HeroSlide {
-  id: number;
+interface CatchItem {
+  id: string;
+  name: string;
+  slug: string;
   image: string;
-  altText: string;
-  productName: string;
-  price: string;
-  originalPrice: string;
-  productSlug: string;
+  price: number;
+  originalPrice: number;
+  weight: string;
+  soldOut: boolean;
 }
 
+const IMG_BASE = process.env.NEXT_PUBLIC_IMG_URL;
+const LOGO = `${process.env.NEXT_PUBLIC_STATIC_URL}/logoo.webp`;
+const MAX_ITEMS = 5;
+const ROTATE_MS = 4500;
+
+const imagePath = (path?: string) => {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  return `${IMG_BASE}/${path.replace(/^\//, '').replace(/^uploads\//, '')}`;
+};
+
+// One card per fish, using the default pack's price, weight and photo
+const toCatchItem = (product: Product): CatchItem => {
+  const variant = product.variants?.find(v => v.isDefault) || product.variants?.[0];
+  const price = Number(variant?.price ?? product.basePrice ?? 0);
+  const original = Number(variant?.originalPrice ?? product.originalPrice ?? 0);
+  return {
+    id: product._id,
+    name: product.name,
+    slug: product.slug,
+    image: imagePath(variant?.images?.[0]?.image || product.images?.[0]?.image),
+    price,
+    originalPrice: original > price ? original : 0,
+    weight: formatWeight(variant?.weight, variant?.weightUnit),
+    soldOut: (variant ? variant.stock : product.stock) <= 0,
+  };
+};
+
+/**
+ * Home page banner: a plain promise on the left (what we sell, where, how to order)
+ * and today's fish on the right with real prices.
+ */
 export default function HeroSection() {
-  const router = useRouter();
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([]);
+  const { t } = useLanguage();
+  const [items, setItems] = useState<CatchItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
-  const [entranceAnimationDone, setEntranceAnimationDone] = useState(false);
+  const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [failed, setFailed] = useState<Set<string>>(new Set());
+  const [whatsapp, setWhatsapp] = useState('');
+  const [phone, setPhone] = useState('');
 
-  // --- Data & Logic Helpers ---
-  const getProductImage = (product: Product) => {
-    const imgBaseUrl = process.env.NEXT_PUBLIC_IMG_URL;
-
-    if (product.variants && product.variants.length > 0) {
-      const defaultVariant =
-        product.variants.find(v => v.isDefault) || product.variants[0];
-
-      if (defaultVariant?.images?.[0]?.image) {
-        const imagePath = defaultVariant.images[0].image;
-
-        if (imagePath.startsWith('http')) return imagePath;
-
-        let cleanPath = imagePath.startsWith('/')
-          ? imagePath.slice(1)
-          : imagePath;
-
-        if (cleanPath.startsWith('uploads/')) {
-          cleanPath = cleanPath.replace('uploads/', '');
-        }
-
-        return `${imgBaseUrl}/${cleanPath}`;
-      }
-    }
-
-    if (
-      product.images &&
-      product.images.length > 0 &&
-      product.images[0]?.image
-    ) {
-      const imagePath = product.images[0].image;
-
-      if (imagePath.startsWith('http')) return imagePath;
-
-      let cleanPath = imagePath.startsWith('/')
-        ? imagePath.slice(1)
-        : imagePath;
-
-      if (cleanPath.startsWith('uploads/')) {
-        cleanPath = cleanPath.replace('uploads/', '');
-      }
-
-      return `${imgBaseUrl}/${cleanPath}`;
-    }
-
-    return '/images/placeholder-fish.jpg';
-  };
-
-  const getProductOfferInfo = (product: Product) => {
-    if (product.variants && product.variants.length > 0) {
-      const defaultVariant =
-        product.variants.find(v => v.isDefault) || product.variants[0];
-
-      if (
-        defaultVariant?.originalPrice &&
-        defaultVariant?.price &&
-        parseFloat(defaultVariant.originalPrice.toString()) >
-          parseFloat(defaultVariant.price.toString())
-      ) {
-        return {
-          hasOffer: true,
-          originalPrice: parseFloat(
-            defaultVariant.originalPrice.toString()
-          ),
-          discountedPrice: parseFloat(defaultVariant.price.toString()),
-        };
-      }
-
-      return {
-        hasOffer: false,
-        originalPrice: parseFloat(
-          defaultVariant?.price?.toString() || '0'
-        ),
-        discountedPrice: parseFloat(
-          defaultVariant?.price?.toString() || '0'
-        ),
-      };
-    }
-
-    return {
-      hasOffer: false,
-      originalPrice: parseFloat(product.basePrice?.toString() || '0'),
-      discountedPrice: parseFloat(product.basePrice?.toString() || '0'),
-    };
-  };
-
-  // --- Data Fetching ---
   useEffect(() => {
-    const fetchHeroProducts = async () => {
-      try {
-        const response = await getAllProducts({});
+    getAllProducts({})
+      .then(res => {
+        if (!res.success) return;
+        const list = (res.data as Product[]).map(toCatchItem);
+        // Fish in stock first
+        setItems([...list.filter(i => !i.soldOut), ...list.filter(i => i.soldOut)].slice(0, MAX_ITEMS));
+      })
+      .catch(() => setItems([]))
+      .finally(() => setLoading(false));
 
-        if (response.success && response.data.length > 0) {
-          const slides: HeroSlide[] = response.data.map(
-            (product: Product, index: number) => {
-              const offerInfo = getProductOfferInfo(product);
-
-              return {
-                id: index + 1,
-                image: getProductImage(product),
-                altText: product.name,
-                productName:
-                  product.name.length > 20
-                    ? product.name.substring(0, 17) + '...'
-                    : product.name,
-                price: `₹${Math.round(offerInfo.discountedPrice)}`,
-                originalPrice: offerInfo.hasOffer
-                  ? `₹${Math.round(offerInfo.originalPrice)}`
-                  : '',
-                productSlug: product.slug,
-              };
-            }
-          );
-
-          setHeroSlides(slides);
-        }
-      } catch (error) {
-        console.error('Error fetching hero products:', error);
-      } finally {
-        setLoading(false);
-
-        setTimeout(() => setEntranceAnimationDone(true), 100);
-      }
-    };
-
-    fetchHeroProducts();
+    settingsAPI
+      .getPublicSettings()
+      .then(res => {
+        if (!res?.success || !res.data) return;
+        setWhatsapp(res.data.whatsappNumber || '');
+        setPhone(res.data.contactNumber || '');
+      })
+      .catch(() => {});
   }, []);
 
-  const nextSlide = useCallback(() => {
-    if (heroSlides.length === 0) return;
-
-    setCurrentSlide(prev => (prev + 1) % heroSlides.length);
-  }, [heroSlides.length]);
-
+  // Gently rotate through today's fish (stops on hover/touch and for reduced-motion users)
   useEffect(() => {
-    if (heroSlides.length === 0) return;
+    if (items.length < 2 || paused) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const timer = setInterval(() => setActive(i => (i + 1) % items.length), ROTATE_MS);
+    return () => clearInterval(timer);
+  }, [items.length, paused]);
 
-    const interval = setInterval(nextSlide, 3000);
+  const scrollToCatch = () =>
+    document.getElementById('todays-catch')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-    return () => clearInterval(interval);
-  }, [nextSlide, heroSlides.length]);
+  const current = items[active];
+  const showPhoto = (item: CatchItem) => item.image && !failed.has(item.id);
+  const markFailed = (id: string) => setFailed(prev => new Set(prev).add(id));
 
-  if (loading || heroSlides.length === 0) {
-    return (
-      <section className="h-[300px] flex items-center justify-center bg-[#EAF8FC]">
-        <div className="w-8 h-8 border-3 border-[#008FB8]/20 border-t-[#008FB8] rounded-full animate-spin"></div>
-      </section>
-    );
-  }
-
-  const currentProduct = heroSlides[currentSlide];
-
-  const getAnimationClass = (delay: string) => {
-    return `animate-slideInRight ${delay}`;
-  };
+  const trust = [
+    { icon: Truck, label: t('home.feature1.title') },
+    { icon: Snowflake, label: t('home.feature2.tag') },
+    { icon: ShieldCheck, label: t('home.feature3.tag') },
+  ];
 
   return (
-    <section className="relative w-full bg-[#064B6A]/90 py-4 md:py-6 overflow-hidden min-h-[300px]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="relative overflow-hidden bg-gradient-to-br from-[#E4F5FB] via-white to-[#E9F7EF]">
+      {/* soft background shapes */}
+      <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#00A9E0]/10 blur-3xl" aria-hidden="true" />
+      <div className="pointer-events-none absolute -bottom-24 right-0 h-80 w-80 rounded-full bg-green-300/20 blur-3xl" aria-hidden="true" />
 
-        <div className="flex flex-col md:flex-row items-center relative gap-4 md:gap-4">
+      <div className="container relative mx-auto grid items-center gap-8 px-5 py-8 sm:px-8 lg:px-12 sm:py-12 lg:grid-cols-[1.15fr_0.85fr] lg:gap-12 lg:py-14">
+        {/* Promise + actions */}
+        <div className="min-w-0 text-center lg:text-left">
+          <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-[#B8DCE7] bg-white px-3 py-1 text-xs font-semibold text-[#063B5C] shadow-sm sm:text-sm">
+            <span className="h-2 w-2 shrink-0 rounded-full bg-green-500" aria-hidden="true" />
+            <span className="text-left">{t('hero.chip')}</span>
+          </span>
 
-          {/* IMAGE SECTION */}
-          <div
-            key={`image-${currentSlide}`}
-            className={`relative z-20 w-full md:w-[40%] flex justify-center items-center transition-all duration-1000 ${
-              entranceAnimationDone
-                ? 'opacity-100 translate-x-0'
-                : 'opacity-0 -translate-x-10'
-            }`}
-          >
+          <h1 className="mt-4 break-words text-[32px] font-extrabold leading-[1.15] text-[#063B5C] sm:text-5xl lg:text-[56px] [html.lang-ta_&]:text-[26px] [html.lang-ta_&]:sm:text-4xl [html.lang-ta_&]:lg:text-[44px]">
+            {t('hero.title1')}
+            <br />
+            <span className="text-[#008FB8]">{t('hero.title2')}</span>
+          </h1>
 
-            <div className="relative w-[260px] h-[260px] xs:w-[280px] xs:h-[280px] sm:w-[300px] sm:h-[300px] md:w-[220px] md:h-[220px] group transition-all duration-700 ease-in-out hover:scale-105">
+          <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-[#315A6E] sm:text-lg lg:mx-0">
+            {t('hero.sub')}
+          </p>
 
-              {/* IMAGE GLOW */}
-              <div className="absolute inset-2 rounded-full bg-[#008FB8]/10 group-hover:bg-[#008FB8]/20 group-hover:blur-2xl transition-all duration-700 z-0" />
-
-              {/* IMAGE CIRCLE */}
-              <div className="absolute inset-0 rounded-full shadow-[0_15px_30px_rgba(0,143,184,0.15)] overflow-hidden border-[4px] md:border-[6px] border-[#B8DCE7]/40 z-10">
-
-                {heroSlides.map((slide, index) => (
-                  <div
-                    key={slide.id}
-                    className={`absolute inset-0 transition-all duration-800 ease-in-out ${
-                      index === currentSlide
-                        ? 'opacity-100 scale-100 rotate-0'
-                        : 'opacity-0 scale-110 -rotate-3'
-                    }`}
-                  >
-
-                    {!imageErrors[index] ? (
-                      <Image
-                        src={slide.image}
-                        alt={slide.altText}
-                        fill
-                        className="object-contain bg-gradient-to-t from-[#EAF8FC] via-[#F8FCFD] to-[#EAF8FC]"
-                        onError={() =>
-                          setImageErrors(prev => ({
-                            ...prev,
-                            [index]: true,
-                          }))
-                        }
-                        priority={index === 0}
-                        sizes="(max-width: 768px) 280px, 220px"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-[#EAF8FC] flex items-center justify-center text-[#008FB8]/50 text-xs">
-                        Error
-                      </div>
-                    )}
-
-                  </div>
-                ))}
-
-              </div>
-
-              {/* FRESH BADGE */}
-              <div className="absolute -bottom-2 -left-2 sm:-bottom-2 sm:-left-2 bg-white/90 backdrop-blur-sm p-1.5 rounded-xl shadow-xl border border-[#B8DCE7] z-30 hidden sm:block animate-bounce-slow">
-
-                <div className="flex items-center gap-1">
-
-                  <div className="w-5 h-5 rounded-full border-2 border-[#008FB8]/20 border-t-[#008FB8] animate-spin-slow" />
-
-                  <div>
-                    <div className="text-[6px] text-[#008FB8]/70 font-black uppercase tracking-tighter">
-                      Fresh
-                    </div>
-
-                    <div className="text-xs font-black text-[#008FB8]">
-                      100%
-                    </div>
-                  </div>
-
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-
-          {/* CONTENT SECTION */}
-          <div className="relative w-full md:w-[60%] md:-ml-16 overflow-hidden">
-
-            {/* PILL BACKGROUND */}
-            <div
-              className={`absolute inset-0 bg-[#064B6A]/90 backdrop-blur-sm rounded-[40px] md:rounded-l-none md:rounded-r-[180px] border border-[#176B8C] z-0 transition-transform duration-1000 ease-out origin-center ${
-                entranceAnimationDone
-                  ? 'scale-100 opacity-100'
-                  : 'scale-90 opacity-0'
-              }`}
-            />
-
-            {/* TEXT CONTENT */}
-            <div
-              key={`content-${currentSlide}`}
-              className="relative z-10 py-8 px-7 sm:py-8 sm:px-8 md:py-6 md:pl-24 md:pr-12 text-left md:text-left"
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">
+            <button
+              type="button"
+              onClick={scrollToCatch}
+              className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-xl bg-[#063B5C] px-7 text-base font-bold text-white shadow-lg transition hover:bg-[#0B4F8A]"
             >
-
-              <h2
-                className={`text-[#EAF8FC] text-xl sm:text-xl md:text-2xl font-extralight tracking-tighter mb-0 ${getAnimationClass(
-                  'delay-100'
-                )}`}
+              {t('hero.shop')} <ArrowRight className="h-5 w-5" aria-hidden="true" />
+            </button>
+            {whatsapp ? (
+              <a
+                href={whatsappLink(whatsapp, t('help.whatsappText'))}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-xl border-2 border-[#25D366] bg-white px-6 text-base font-bold text-[#128C4A] transition hover:bg-[#25D366] hover:text-white"
               >
-                Fresh & Delicious
-              </h2>
-
-              <h1
-                className={`text-white text-3xl sm:text-3xl md:text-4xl font-serif italic tracking-wide -mt-1 md:-mt-2 mb-3 md:mb-2 ${getAnimationClass(
-                  'delay-200'
-                )}`}
+                <FaWhatsapp className="h-5 w-5" aria-hidden="true" /> {t('hero.whatsappOrder')}
+              </a>
+            ) : phone ? (
+              <a
+                href={`tel:${phone.replace(/[^\d+]/g, '')}`}
+                className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-xl border-2 border-[#063B5C] bg-white px-6 text-base font-bold text-[#063B5C] transition hover:bg-[#063B5C] hover:text-white"
               >
-                MeenavanFresh
-              </h1>
-
-              <p
-                className={`text-[#C7DCE7] text-sm sm:text-sm md:text-base max-w-md mb-5 md:mb-4 leading-relaxed mx-0 ${getAnimationClass(
-                  'delay-300'
-                )}`}
-              >
-                Enjoy premium ocean-fresh MeenavanFresh with{' '}
-                <span className="font-bold text-white">
-                  healthy delicious
-                </span>{' '}
-                {currentProduct.productName.toLowerCase()} from{' '}
-                <span className="font-semibold text-white">
-                  {currentProduct.price}
-                </span>
-                .
-              </p>
-
-              <div className={getAnimationClass('delay-400')}>
-
-                <button
-                  onClick={() =>
-                    router.push(
-                      `/products/${currentProduct.productSlug}`
-                    )
-                  }
-                  className="group inline-flex items-center bg-[#064B6A] rounded-full shadow-lg hover:shadow-[#00A9E0]/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 pl-5 pr-1.5 py-1.5 border border-[#176B8C]"
-                >
-
-                  <span className="text-[#EAF8FC] font-bold text-[10px] uppercase tracking-[0.2em] mr-2 transition-colors group-hover:text-white">
-                    View More
-                  </span>
-
-                  <div className="bg-[#00A9E0] text-white p-1.5 rounded-lg group-hover:bg-[#008FB8] transition-colors duration-300">
-
-                    <svg
-                      className="w-3 h-3 group-hover:translate-x-0.5 transition-transform duration-300"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2.5}
-                        d="M17 8l4 4m0 0l-4 4m4-4H3"
-                      />
-                    </svg>
-
-                  </div>
-
-                </button>
-
-              </div>
-
-            </div>
-
-
-            {/* PROGRESS INDICATORS */}
-            <div className="relative z-20 pb-7 px-7 md:pb-6 md:px-6 md:pl-24 flex gap-2 justify-start md:justify-start">
-
-              {heroSlides.slice(0, 5).map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setCurrentSlide(i)}
-                  className={`h-1 transition-all duration-500 rounded-full ${
-                    i === currentSlide
-                      ? 'w-6 bg-[#00A9E0] shadow-[0_2px_8px_rgba(0,169,224,0.3)]'
-                      : 'w-1.5 bg-[#00A9E0]/20 hover:bg-[#00A9E0]/40'
-                  }`}
-                  aria-label={`Go to slide ${i + 1}`}
-                />
-              ))}
-
-            </div>
-
+                <Phone className="h-5 w-5" aria-hidden="true" /> {t('hero.callOrder')}
+              </a>
+            ) : null}
           </div>
 
+          <ul className="mt-7 flex flex-wrap justify-center gap-x-5 gap-y-2 lg:justify-start">
+            {trust.map(({ icon: Icon, label }) => (
+              <li key={label} className="flex items-center gap-2 text-sm font-semibold text-[#063B5C]">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-[#008FB8] shadow-sm ring-1 ring-[#D6ECF3]">
+                  <Icon className="h-4 w-4" aria-hidden="true" />
+                </span>
+                {label}
+              </li>
+            ))}
+          </ul>
         </div>
 
+        {/* Today's catch card */}
+        <div
+          className="mx-auto w-full min-w-0 max-w-md"
+          onMouseEnter={() => setPaused(true)}
+          onMouseLeave={() => setPaused(false)}
+          onTouchStart={() => setPaused(true)}
+        >
+          {loading ? (
+            <div className="h-[420px] animate-pulse rounded-3xl bg-white/70 shadow-xl ring-1 ring-[#D6ECF3]" />
+          ) : !current ? null : (
+            <div className="rounded-3xl bg-white p-4 shadow-[0_20px_50px_rgba(6,59,92,0.15)] ring-1 ring-[#D6ECF3] sm:p-5">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="inline-flex items-center gap-2 rounded-full bg-green-50 px-3 py-1 text-xs font-bold text-green-700 ring-1 ring-green-200">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-green-500" aria-hidden="true" />
+                  {t('hero.todayLabel')}
+                </span>
+                {items.length > 1 && (
+                  <span className="text-xs font-medium text-[#315A6E]">
+                    {active + 1} / {items.length}
+                  </span>
+                )}
+              </div>
+
+              <Link
+                href={`/products/${current.slug}`}
+                className="group relative block aspect-[4/3] overflow-hidden rounded-2xl bg-gradient-to-br from-[#EAF8FC] to-[#D6ECF3]"
+              >
+                <Image
+                  key={current.id}
+                  src={showPhoto(current) ? current.image : LOGO}
+                  alt={current.name}
+                  fill
+                  priority
+                  sizes="(max-width: 1024px) 90vw, 420px"
+                  className={`transition duration-500 group-hover:scale-105 ${showPhoto(current) ? 'object-cover' : 'object-contain p-12'}`}
+                  onError={() => markFailed(current.id)}
+                />
+                {current.soldOut && (
+                  <span className="absolute left-3 top-3 rounded-full bg-white/95 px-3 py-1 text-xs font-bold text-red-600 shadow">
+                    {t('product.soldOut')}
+                  </span>
+                )}
+              </Link>
+
+              <div className="mt-4 flex items-end justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-lg font-bold text-[#063B5C]">{current.name}</p>
+                  <p className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
+                    <span className="text-2xl font-extrabold text-[#063B5C]">₹{Math.round(current.price)}</span>
+                    {current.weight && <span className="text-sm font-medium text-[#315A6E]">/ {current.weight}</span>}
+                    {current.originalPrice > 0 && (
+                      <span className="text-sm text-gray-400 line-through">₹{Math.round(current.originalPrice)}</span>
+                    )}
+                  </p>
+                </div>
+                <Link
+                  href={`/products/${current.slug}`}
+                  className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl bg-amber-300 px-4 font-bold text-[#063B5C] transition hover:bg-amber-400"
+                >
+                  {t('hero.view')} <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              </div>
+
+              {items.length > 1 && (
+                <div className="mt-4 flex gap-2" role="tablist" aria-label={t('hero.todayLabel')}>
+                  {items.map((item, i) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={i === active}
+                      aria-label={item.name}
+                      onClick={() => setActive(i)}
+                      className={`relative h-14 flex-1 overflow-hidden rounded-xl bg-[#EAF8FC] ring-2 transition ${
+                        i === active ? 'ring-[#008FB8]' : 'ring-transparent opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      <Image
+                        src={showPhoto(item) ? item.image : LOGO}
+                        alt=""
+                        fill
+                        sizes="80px"
+                        className={showPhoto(item) ? 'object-cover' : 'object-contain p-2'}
+                        onError={() => markFailed(item.id)}
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-
-
-      <style jsx>{`
-        @keyframes spin-slow {
-          from {
-            transform: rotate(0deg);
-          }
-          to {
-            transform: rotate(360deg);
-          }
-        }
-
-        @keyframes bounce-slow {
-          0%,
-          100% {
-            transform: translateY(0);
-          }
-          50% {
-            transform: translateY(-4px);
-          }
-        }
-
-        @keyframes slideInRight {
-          from {
-            opacity: 0;
-            transform: translateX(40px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-
-        .animate-spin-slow {
-          animation: spin-slow 12s linear infinite;
-        }
-
-        .animate-bounce-slow {
-          animation: bounce-slow 3s ease-in-out infinite;
-        }
-
-        .animate-slideInRight {
-          animation: slideInRight 0.6s cubic-bezier(0.16, 1, 0.3, 1)
-            forwards;
-        }
-
-        .delay-100 {
-          animation-delay: 100ms;
-        }
-
-        .delay-200 {
-          animation-delay: 200ms;
-        }
-
-        .delay-300 {
-          animation-delay: 300ms;
-        }
-
-        .delay-400 {
-          animation-delay: 400ms;
-        }
-
-        .delay-500 {
-          animation-delay: 500ms;
-        }
-      `}</style>
     </section>
   );
 }

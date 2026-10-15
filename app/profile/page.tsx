@@ -1,5 +1,5 @@
-import ProfilePage from '@/components/profile/ProfilePage';
+import ProfileGate from '@/components/profile/ProfileGate';
 
 export default function Profile() {
-  return <ProfilePage />;
+  return <ProfileGate />;
 }

@@ -11,8 +11,8 @@ interface ContactInfo {
 export default function ContactInfo() {
   const [contactInfo, setContactInfo] = useState<ContactInfo>({
     contactNumber: '+91 7200074221',
-    contactEmail: 'support@MeenavanFresh.com',
-    companyAddress: '123 MeenavanFresh Street, Mumbai, India'
+    contactEmail: '',
+    companyAddress: ''
   });
   
   const [loading, setLoading] = useState(true);
@@ -27,8 +27,8 @@ export default function ContactInfo() {
           const data = response.data;
           setContactInfo({
             contactNumber: data.contactNumber || '+91 7200074221',
-            contactEmail: data.contactEmail || 'support@MeenavanFresh.com',
-            companyAddress: data.companyAddress || '123 MeenavanFresh Street, Mumbai, India'
+            contactEmail: data.contactEmail || '',
+            companyAddress: data.companyAddress || ''
           });
         }
         setError(null);
@@ -52,7 +52,7 @@ export default function ContactInfo() {
       ),
       title: 'Email',
       details: contactInfo.contactEmail,
-      description: 'Send us an email anytime',
+      description: 'Tap to write to us',
       action: `mailto:${contactInfo.contactEmail}`
     },
     {
@@ -63,7 +63,7 @@ export default function ContactInfo() {
       ),
       title: 'Phone',
       details: contactInfo.contactNumber,
-      description: 'Mon-Fri from 9am to 6pm',
+      description: 'Tap to call us',
       action: `tel:${contactInfo.contactNumber.replace(/\s/g, '')}`
     },
     {
@@ -75,7 +75,7 @@ export default function ContactInfo() {
       ),
       title: 'Address',
       details: contactInfo.companyAddress,
-      description: 'Visit our store',
+      description: 'Tap to open in Google Maps',
       action: `https://maps.google.com/?q=${encodeURIComponent(contactInfo.companyAddress)}`
     }
   ];
@@ -106,67 +106,31 @@ export default function ContactInfo() {
       )}
       
       <div className="space-y-3 sm:space-y-4 md:space-y-6">
-        {/* Email Contact */}
-        <a 
-          href={contactMethods[0].action}
-          className="block group cursor-pointer transition-all duration-200 hover:shadow-lg"
-        >
-          <div 
-            className="flex items-start space-x-3 sm:space-x-4 p-3 sm:p-4 rounded-lg border transition-all duration-200 hover:border-[#008FB8]"
-            style={{ borderColor: 'rgba(0, 143, 184, 0.2)' }}
-          >
-            <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center transition-transform duration-200 group-hover:scale-110" style={{ backgroundColor: 'rgba(0, 143, 184, 0.1)', color: '#008FB8' }}>
-              {contactMethods[0].icon}
-            </div>
-            <div className="min-w-0 flex-1">
-              <h4 className="font-semibold text-sm sm:text-base" style={{ color: '#008FB8' }}>{contactMethods[0].title}</h4>
-              <p className="font-medium text-xs sm:text-sm md:text-base text-[#063B5C] break-words">{contactMethods[0].details}</p>
-              <p className="text-[10px] sm:text-xs md:text-sm text-[#315A6E]">{contactMethods[0].description}</p>
-            </div>
-          </div>
-        </a>
-
-        {/* Phone Contact */}
-        <a 
-          href={contactMethods[1].action}
-          className="block group cursor-pointer transition-all duration-200 hover:shadow-lg"
-        >
-          <div 
-            className="flex items-start space-x-3 sm:space-x-4 p-3 sm:p-4 rounded-lg border transition-all duration-200 hover:border-[#008FB8]"
-            style={{ borderColor: 'rgba(0, 143, 184, 0.2)' }}
-          >
-            <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center transition-transform duration-200 group-hover:scale-110" style={{ backgroundColor: 'rgba(0, 143, 184, 0.1)', color: '#008FB8' }}>
-              {contactMethods[1].icon}
-            </div>
-            <div className="min-w-0 flex-1">
-              <h4 className="font-semibold text-sm sm:text-base" style={{ color: '#008FB8' }}>{contactMethods[1].title}</h4>
-              <p className="font-medium text-xs sm:text-sm md:text-base text-[#063B5C] break-words">{contactMethods[1].details}</p>
-              <p className="text-[10px] sm:text-xs md:text-sm text-[#315A6E]">{contactMethods[1].description}</p>
-            </div>
-          </div>
-        </a>
-
-        {/* Address Contact */}
-        <a 
-          href={contactMethods[2].action}
-          className="block group cursor-pointer transition-all duration-200 hover:shadow-lg"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <div 
-            className="flex items-start space-x-3 sm:space-x-4 p-3 sm:p-4 rounded-lg border transition-all duration-200 hover:border-[#008FB8]"
-            style={{ borderColor: 'rgba(0, 143, 184, 0.2)' }}
-          >
-            <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center transition-transform duration-200 group-hover:scale-110" style={{ backgroundColor: 'rgba(0, 143, 184, 0.1)', color: '#008FB8' }}>
-              {contactMethods[2].icon}
-            </div>
-            <div className="min-w-0 flex-1">
-              <h4 className="font-semibold text-sm sm:text-base" style={{ color: '#008FB8' }}>{contactMethods[2].title}</h4>
-              <p className="font-medium text-xs sm:text-sm md:text-base text-[#063B5C] break-words">{contactMethods[2].details}</p>
-              <p className="text-[10px] sm:text-xs md:text-sm text-[#315A6E]">{contactMethods[2].description}</p>
-            </div>
-          </div>
-        </a>
+        {/* Phone first: the easiest way for most customers to reach us */}
+        {[contactMethods[1], contactMethods[0], contactMethods[2]]
+          .filter(method => method.details)
+          .map(method => (
+            <a
+              key={method.title}
+              href={method.action}
+              className="block group cursor-pointer transition-all duration-200 hover:shadow-lg"
+              {...(method.title === 'Address' ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+            >
+              <div
+                className="flex items-start space-x-3 sm:space-x-4 p-3 sm:p-4 rounded-lg border transition-all duration-200 hover:border-[#008FB8]"
+                style={{ borderColor: 'rgba(0, 143, 184, 0.2)' }}
+              >
+                <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center transition-transform duration-200 group-hover:scale-110" style={{ backgroundColor: 'rgba(0, 143, 184, 0.1)', color: '#008FB8' }}>
+                  {method.icon}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-semibold text-base" style={{ color: '#008FB8' }}>{method.title}</h4>
+                  <p className="font-medium text-base text-[#063B5C] break-words">{method.details}</p>
+                  <p className="text-sm text-[#315A6E]">{method.description}</p>
+                </div>
+              </div>
+            </a>
+          ))}
       </div>
     </div>
   );

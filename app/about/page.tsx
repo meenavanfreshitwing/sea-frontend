@@ -11,21 +11,21 @@ interface TeamMember {
 }
 
 const AboutPage: React.FC = () => {
-  const storeName = process.env.NEXT_PUBLIC_SITE_NAME || 'Sea Food';
+  const storeName = process.env.NEXT_PUBLIC_SITE_NAME || 'Meenavan Fresh';
   const STATIC_URL = process.env.NEXT_PUBLIC_STATIC_URL;
   
   const teamMembers: TeamMember[] = [
     {
       id: 1,
-      name: 'Sea Food Team',
+      name: 'Meenavan Fresh Team',
       role: 'Founders',
-      bio: `Our team has over 15 years of experience in the MeenavanFresh industry and founded ${storeName} with a vision to provide the freshest, highest-quality MeenavanFresh directly from the ocean to your table.`,
+      bio: `Our team has over 15 years of experience in the seafood industry and founded ${storeName} with a vision to provide the freshest, highest-quality seafood directly from the ocean to your table.`,
       image: `${STATIC_URL}/m1.webp`
     },
     {
       id: 2,
       name: 'Sourcing Experts',
-      role: 'MeenavanFresh Specialists',
+      role: 'Seafood Specialists',
       bio: `Our sourcing experts work directly with the finest fishing communities to ensure we get the highest quality catch - fresh fish, prawns, crabs, and more, delivered daily.`,
       image: `${STATIC_URL}/m1.webp`
     },
@@ -33,14 +33,14 @@ const AboutPage: React.FC = () => {
       id: 3,
       name: 'Quality Team',
       role: 'Freshness Assurance',
-      bio: 'Our quality team ensures every MeenavanFresh item meets the highest standards of freshness, sustainability, and safety through rigorous temperature control and careful handling.',
+      bio: 'Our quality team ensures every seafood item meets the highest standards of freshness, sustainability, and safety through rigorous temperature control and careful handling.',
       image: `${STATIC_URL}/m1.webp`
     }
   ];
 
   const stats = [
     { number: '15+', label: 'Years Experience' },
-    { number: '50+', label: 'MeenavanFresh Varieties' },
+    { number: '50+', label: 'Fish Varieties' },
     { number: '25k+', label: 'Happy Customers' },
     { number: '100%', label: 'Freshness Assured' }
   ];
@@ -60,7 +60,7 @@ const AboutPage: React.FC = () => {
                  Est. 2010 • Fresh Since Day One
               </span>
               <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-8xl font-serif font-light mb-6 md:mb-8 tracking-tight leading-tight text-[#063B5C]">
-                 Fresh. Sustainable. <br className="hidden md:block"/> <span className="italic font-normal bg-gradient-to-r from-[#008FB8] via-[#008FB8] to-[#00A9E0] bg-clip-text text-transparent">Premium MeenavanFresh.</span>
+                 Fresh. Sustainable. <br className="hidden md:block"/> <span className="italic font-normal bg-gradient-to-r from-[#008FB8] via-[#008FB8] to-[#00A9E0] bg-clip-text text-transparent">Premium seafood.</span>
               </h1>
               <p className="max-w-2xl mx-auto text-base md:text-lg lg:text-xl text-[#315A6E] leading-relaxed font-light px-4">
                   Dedicated to providing the freshest ocean catches including premium fish, prawns, crabs, lobsters, and more, delivered directly to your doorstep.
@@ -77,7 +77,7 @@ const AboutPage: React.FC = () => {
               <div className="relative h-[300px] sm:h-[400px] md:h-[500px] lg:h-[600px] rounded-xl md:rounded-2xl overflow-hidden shadow-xl md:shadow-2xl border border-[#B8DCE7]/50">
                   <Image
                   src={`${STATIC_URL}/aboutt.webp`}
-                  alt="Fresh Premium MeenavanFresh - Fish, Prawns, Crabs, Lobsters"
+                  alt="Fresh Premium seafood - Fish, Prawns, Crabs, Lobsters"
                   fill
                   className="object-cover transition-transform duration-1000 group-hover:scale-105"
                   priority
@@ -98,7 +98,7 @@ const AboutPage: React.FC = () => {
               
               <div className="space-y-4 md:space-y-6 text-base md:text-lg text-[#315A6E] leading-relaxed">
                   <p>
-                      Our mission is to make premium, sustainable MeenavanFresh accessible to every home. We believe in the power of fresh, high-quality MeenavanFresh to bring families together and create memorable dining experiences.
+                      Our mission is to make premium, sustainable seafood accessible to every home. We believe in the power of fresh, high-quality seafood to bring families together and create memorable dining experiences.
                   </p>
                   <p className="font-light">
                       We work directly with local fishing communities and sustainable fisheries, ensuring every catch meets the highest standards of freshness, quality, and environmental responsibility.
@@ -106,7 +106,7 @@ const AboutPage: React.FC = () => {
               </div>
 
               <div className="p-6 md:p-8 bg-gradient-to-r from-[#008FB8]/5 via-[#008FB8]/5 to-[#064B6A]/5 rounded-xl md:rounded-2xl border-l-4 md:border-l-8 border-[#008FB8] italic text-lg md:text-xl text-[#315A6E] font-serif leading-relaxed shadow-sm">
-                Fresh MeenavanFresh brings ocean goodness to your table, every single day.
+                Fresh seafood brings ocean goodness to your table, every single day.
               </div>
             </div>
           </div>
@@ -137,7 +137,7 @@ const AboutPage: React.FC = () => {
             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-serif text-[#063B5C]">Meet The Team</h2>
             <div className="w-10 md:w-12 h-1 bg-gradient-to-r from-[#008FB8] via-[#008FB8] to-[#064B6A]/30 mx-auto" />
             <p className="text-[#315A6E] text-base md:text-lg font-light tracking-wide">
-              The passionate MeenavanFresh experts behind {storeName}
+              The passionate seafood experts behind {storeName}
             </p>
           </div>
           
@@ -181,7 +181,7 @@ const AboutPage: React.FC = () => {
                   Experience Freshness
                 </span>
                 <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-7xl font-serif text-white leading-snug md:leading-[1.1]">
-                  Discover the taste of <span className="italic bg-gradient-to-r from-[#00A9E0] via-[#008FB8] to-[#064B6A] bg-clip-text text-transparent">premium fresh MeenavanFresh</span> from Sea
+                  Discover the taste of <span className="italic bg-gradient-to-r from-[#00A9E0] via-[#008FB8] to-[#064B6A] bg-clip-text text-transparent">premium fresh seafood</span> from Sea
                 </h2>
               </div>
               <div className="flex flex-col sm:flex-row gap-4 md:gap-6 items-start sm:items-center">
@@ -189,7 +189,7 @@ const AboutPage: React.FC = () => {
                   href="/products" 
                   className="bg-[#008FB8] text-white px-6 py-3 md:px-10 md:py-5 rounded-full font-bold uppercase tracking-widest text-[10px] md:text-[11px] hover:bg-[#064B6A] transition-all hover:-translate-y-1 shadow-xl md:shadow-2xl inline-block text-center"
                 >
-                  Shop Fresh MeenavanFresh
+                  Shop Fresh Fish
                 </Link>
 
                 <button className="text-white/60 hover:text-white text-[10px] md:text-[11px] font-bold uppercase tracking-widest transition-colors flex items-center gap-2 group/link">
@@ -203,7 +203,7 @@ const AboutPage: React.FC = () => {
               <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-l from-[#008FB8]/50 to-transparent z-10" />
               <Image
                 src={`${STATIC_URL}/abot1.webp`}
-                alt="Fresh Premium MeenavanFresh - Fish, Prawns, Crabs, Lobsters"
+                alt="Fresh Premium seafood - Fish, Prawns, Crabs, Lobsters"
                 fill
                 className="object-cover transition-transform duration-[3000ms] group-hover:scale-105"
               />
