@@ -28,8 +28,8 @@ export default function CartPage() {
 
   const itemCount = cart.totalItems || 0;
   const subtotal = cart.totalPrice || 0;
-  const tax = subtotal * 0.05;
-  const total = subtotal + tax;
+  // No tax: the backend charges the subtotal (delivery is free)
+  const total = subtotal;
 
   // Helper function to get variant display name
   const getVariantName = (item: any): string | null => {
@@ -298,10 +298,6 @@ export default function CartPage() {
                 <div className="flex justify-between text-sm sm:text-base text-[#315A6E]">
                   <span>{t('cart.delivery')}</span>
                   <span className="font-medium" style={{ color: '#008FB8' }}>{t('common.free')}</span>
-                </div>
-                <div className="flex justify-between text-sm sm:text-base text-[#315A6E]">
-                  <span>{t('cart.tax')}</span>
-                  <span>₹{tax.toFixed(2)}</span>
                 </div>
                 <div className="border-t border-[#B8DCE7] pt-2 sm:pt-3 flex justify-between text-base sm:text-lg font-semibold text-[#063B5C]">
                   <span>{t('cart.total')}</span>

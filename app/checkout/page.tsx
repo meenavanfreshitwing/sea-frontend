@@ -1009,9 +1009,9 @@ export default function CheckoutPage() {
 
   const displayItems = getDisplayItems();
   const subtotal = getSubtotal();
-  const tax = subtotal * 0.05;
+  // No tax: the backend charges the subtotal (delivery is free)
   const shippingFee = 0;
-  const total = subtotal + tax + shippingFee;
+  const total = subtotal + shippingFee;
 
   // Orders need a logged-in customer: ask first, before the long form (cart is kept after login)
   if (!authLoading && !user) {
@@ -1455,10 +1455,6 @@ export default function CheckoutPage() {
                   <div className="flex justify-between text-sm sm:text-base text-[#315A6E]">
                     <span>{t('cart.delivery')}</span>
                     <span className="font-medium" style={{ color: '#008FB8' }}>{t('common.free')}</span>
-                  </div>
-                  <div className="flex justify-between text-sm sm:text-base text-[#315A6E]">
-                    <span>{t('cart.tax')}</span>
-                    <span>₹{tax.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-base sm:text-lg font-semibold border-t border-[#B8DCE7] pt-2 text-[#063B5C]">
                     <span>{t('cart.total')}</span>
