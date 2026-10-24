@@ -128,8 +128,8 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
   const itemCount = cart.totalItems || 0;
   const subtotal = cart.totalPrice || 0;
-  const tax = subtotal * 0.05;
-  const total = subtotal + tax;
+  // No tax: the backend charges the subtotal (delivery is free)
+  const total = subtotal;
 
   return (
     <>
@@ -329,10 +329,6 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
               <div className="flex justify-between text-xs">
                 <span className="text-[#315A6E]">{t('cart.delivery')}</span>
                 <span className="font-bold" style={{ color: '#008FB8' }}>{t('common.free')}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-[#315A6E]">{t('cart.tax')}</span>
-                <span className="text-[#063B5C] font-semibold">₹{tax.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm font-bold pt-2 border-t border-[#B8DCE7]/60 mt-1">
                 <span className="text-[#063B5C]">{t('cart.total')}</span>
