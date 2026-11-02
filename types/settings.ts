@@ -20,6 +20,8 @@ export interface PublicSettings {
   siteName: string;
   siteTitle: string;
   siteDescription: string;
+  // Empty unless the admin switched the announcement on
+  announcement?: string;
   contactEmail: string;
   contactNumber: string;
   whatsappNumber?: string;

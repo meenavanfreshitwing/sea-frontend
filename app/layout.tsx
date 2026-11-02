@@ -4,6 +4,7 @@ import { AuthProvider } from '@/context/AuthContext';
 import { CartProvider } from '@/context/CartContext';
 import { LanguageProvider } from '@/context/LanguageContext';
 import HeaderWrapper from '@/components/ui/HeaderWrapper';
+import AnnouncementBar from '@/components/AnnouncementBar';
 import Footer from '@/components/Footer';
 import BookingNoticePopup from '@/components/booking/BookingNoticePopup';
 import HelpButton from '@/components/HelpButton';
@@ -32,6 +33,7 @@ export default function RootLayout({
         <AuthProvider>
           <CartProvider>
             <HeaderWrapper />
+            <AnnouncementBar />
             {children}
             <Footer />
             <BookingNoticePopup />
