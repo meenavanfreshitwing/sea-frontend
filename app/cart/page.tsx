@@ -27,9 +27,11 @@ export default function CartPage() {
   };
 
   const itemCount = cart.totalItems || 0;
-  const subtotal = cart.totalPrice || 0;
+  // Masala add-ons chosen at checkout are included in the server's total
+  const addonsTotal = cart.addonsTotal || 0;
+  const subtotal = (cart.totalPrice || 0) - addonsTotal;
   // No tax: the backend charges the subtotal (delivery is free)
-  const total = subtotal;
+  const total = subtotal + addonsTotal;
 
   // Helper function to get variant display name
   const getVariantName = (item: any): string | null => {
@@ -295,6 +297,12 @@ export default function CartPage() {
                   <span>{t('cart.subtotal', { n: itemCount })}</span>
                   <span>₹{subtotal.toFixed(2)}</span>
                 </div>
+                {addonsTotal > 0 && (
+                  <div className="flex justify-between text-sm sm:text-base text-[#315A6E]">
+                    <span>🍳 {t('addons.total')}</span>
+                    <span>₹{addonsTotal.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm sm:text-base text-[#315A6E]">
                   <span>{t('cart.delivery')}</span>
                   <span className="font-medium" style={{ color: '#008FB8' }}>{t('common.free')}</span>

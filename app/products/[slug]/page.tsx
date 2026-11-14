@@ -1,5 +1,7 @@
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
+import { cookies } from 'next/headers';
+import { LOCATION_COOKIE } from '@/lib/location';
 import ClientProductDetail from './ClientProductDetail';
 import { getProductSmart, getAllProducts } from '@/lib/productService';
 
@@ -60,8 +62,11 @@ export default async function ProductDetailPage(props: ProductDetailPageProps) {
   }
 
   console.log(`📄 ProductDetailPage - Looking for product with slug: ${slug}`);
-  
-  const product = await getProductSmart(slug);
+
+  // Customer's delivery location (set by the location picker) → that location's prices
+  const location = (await cookies()).get(LOCATION_COOKIE)?.value || undefined;
+
+  const product = await getProductSmart(slug, location);
   
   if (!product) {
     console.log(`❌ Product not found for slug: ${slug}`);
@@ -73,7 +78,7 @@ export default async function ProductDetailPage(props: ProductDetailPageProps) {
   // Fetch random products for "Related Products"
   const getRandomProducts = async (currentProductId: string, limit = 4) => {
     try {
-      const response = await getAllProducts({});
+      const response = await getAllProducts({ location });
       if (response.success && response.data) {
         const otherProducts = response.data.filter((p: any) => p._id !== currentProductId);
         const shuffled = [...otherProducts].sort(() => 0.5 - Math.random());

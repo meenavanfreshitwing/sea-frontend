@@ -17,6 +17,9 @@ import { useLanguage } from '@/context/LanguageContext';
 import { dateLocale } from '@/lib/i18n/translations';
 import { formatDeliveryDate, formatCutoffTime } from '@/lib/booking-api';
 import type { TranslationKey } from '@/lib/i18n/translations';
+import CheckoutAddons from '@/components/checkout/CheckoutAddons';
+import { AddonGroup, fetchCheckoutAddons, setCartAddon } from '@/lib/addons';
+import { getStoredLocation, storeLocation } from '@/lib/location';
 
 declare global {
   interface Window {
@@ -91,7 +94,7 @@ const getProductPrice = (item: any): number => {
 
 export default function CheckoutPage() {
   const { t, lang } = useLanguage();
-  const { cart, clearCart, loading: cartLoading } = useCart();
+  const { cart, clearCart, refreshCart, loading: cartLoading } = useCart();
   const { user, token, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
@@ -146,6 +149,11 @@ export default function CheckoutPage() {
 
   const [buyNowItem, setBuyNowItem] = useState<any>(null);
   const [isBuyNowMode, setIsBuyNowMode] = useState(false);
+
+  // Add-ons (masala): the cart keeps them on the server; Buy Now keeps them here
+  const [addonGroups, setAddonGroups] = useState<AddonGroup[]>([]);
+  const [buyNowAddons, setBuyNowAddons] = useState<Record<string, number>>({});
+  const [addonBusyId, setAddonBusyId] = useState<string | null>(null);
 
   // ✅ Pin & map state
   const [pinLat, setPinLat] = useState<number | null>(null);
@@ -359,10 +367,35 @@ export default function CheckoutPage() {
     if (searchParams.get('buyNow') === 'true') {
       const storedItem = sessionStorage.getItem('buyNowItem');
       if (storedItem) {
-        setBuyNowItem(JSON.parse(storedItem));
+        const item = JSON.parse(storedItem);
+        setBuyNowItem(item);
         setIsBuyNowMode(true);
+        // The saved price may be for another location (or out of date): refresh it.
+        // Product requests carry the customer's location automatically.
+        const productId = item?.product?._id;
+        if (productId) {
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products/${productId}`, { cache: 'no-store' })
+            .then(res => (res.ok ? res.json() : null))
+            .then(data => {
+              const fresh = data?.data;
+              if (!fresh) return;
+              const pack = item.selectedVariant?._id
+                ? (fresh.variants || []).find((v: any) => v._id === item.selectedVariant._id)
+                : null;
+              const price = pack ? pack.price : fresh.basePrice;
+              if (typeof price !== 'number' || price === item.price) return;
+              const updated = { ...item, product: fresh, selectedVariant: pack || item.selectedVariant, price };
+              sessionStorage.setItem('buyNowItem', JSON.stringify(updated));
+              setBuyNowItem(updated);
+            })
+            .catch(() => {});
+        }
       }
     }
+  }, []);
+
+  useEffect(() => {
+    fetchCheckoutAddons().then(setAddonGroups).catch(() => setAddonGroups([]));
   }, []);
 
   useEffect(() => {
@@ -724,9 +757,57 @@ export default function CheckoutPage() {
     return cart.items;
   };
 
+  // Chosen add-ons as bill lines (price from the shop's list for Buy Now, from the cart otherwise)
+  const getAddonLines = (): { addon: string; name: string; price: number; quantity: number }[] => {
+    if (isBuyNowMode) {
+      const all = addonGroups.flatMap(g => g.addons);
+      return Object.entries(buyNowAddons)
+        .filter(([, qty]) => qty > 0)
+        .map(([id, quantity]) => {
+          const a = all.find(x => x._id === id);
+          return a ? { addon: id, name: a.name, price: a.price, quantity } : null;
+        })
+        .filter((l): l is { addon: string; name: string; price: number; quantity: number } => l !== null);
+    }
+    return (cart.addons || []).map(a => ({ addon: String(a.addon), name: a.name, price: a.price, quantity: a.quantity }));
+  };
+
   const getSubtotal = () => {
-    if (isBuyNowMode && buyNowItem) return buyNowItem.price * buyNowItem.quantity;
+    if (isBuyNowMode && buyNowItem) {
+      const addons = getAddonLines().reduce((s, l) => s + l.price * l.quantity, 0);
+      return buyNowItem.price * buyNowItem.quantity + addons;
+    }
+    // The cart total from the server already includes add-ons
     return cart.totalPrice || 0;
+  };
+
+  const addonQuantities: Record<string, number> = isBuyNowMode
+    ? buyNowAddons
+    : Object.fromEntries((cart.addons || []).map(a => [String(a.addon), a.quantity]));
+
+  const handleAddonChange = async (addonId: string, quantity: number) => {
+    if (isBuyNowMode) {
+      setBuyNowAddons(prev => ({ ...prev, [addonId]: Math.max(0, quantity) }));
+      return;
+    }
+    setAddonBusyId(addonId);
+    try {
+      await setCartAddon(addonId, Math.max(0, quantity));
+      await refreshCart();
+    } catch (err: any) {
+      showErrorPopup(err?.message || t('addons.failed'));
+    } finally {
+      setAddonBusyId(null);
+    }
+  };
+
+  // Server says the address is in another location: switch to it and reload with its prices
+  const handleLocationMismatch = (error: any): boolean => {
+    if (error?.code !== 'LOCATION_MISMATCH' || !error.location?.slug) return false;
+    storeLocation({ ...error.location, pincode: formData.postalCode, place: formData.city });
+    showErrorPopup(error.message);
+    setTimeout(() => window.location.reload(), 3500);
+    return true;
   };
 
   const buildCustomerPin = () => {
@@ -796,7 +877,12 @@ export default function CheckoutPage() {
           price: item.price,
           quantity: item.quantity,
         }));
+        // Cart add-ons are already on the server cart; Buy Now sends its own
+        orderData.addons = getAddonLines().map(l => ({ addon: l.addon, quantity: l.quantity }));
       }
+      // The server checks this against the delivery pincode
+      const deliveryLocation = getStoredLocation();
+      if (deliveryLocation) orderData.location = deliveryLocation.slug;
 
       const result = await createOrder(orderData);
 
@@ -816,6 +902,7 @@ export default function CheckoutPage() {
         hardRedirectHome();
         return;
       }
+      if (handleLocationMismatch(error)) return;
 
       let errorMessage = 'Unable to place your order. Please try again.';
       if (error.code === 'STREET_NOT_FOUND') {
@@ -922,7 +1009,12 @@ export default function CheckoutPage() {
           price: item.price,
           quantity: item.quantity,
         }));
+        // Cart add-ons are already on the server cart; Buy Now sends its own
+        orderData.addons = getAddonLines().map(l => ({ addon: l.addon, quantity: l.quantity }));
       }
+      // The server checks this against the delivery pincode
+      const deliveryLocation = getStoredLocation();
+      if (deliveryLocation) orderData.location = deliveryLocation.slug;
 
       const orderResult = await createOrder(orderData);
       const orderId = orderResult.order.orderId;
@@ -989,6 +1081,10 @@ export default function CheckoutPage() {
     } catch (error: any) {
       if (error.code === 'CART_EMPTY' || error.message === 'Cart is empty') {
         hardRedirectHome();
+        return;
+      }
+      if (handleLocationMismatch(error)) {
+        setPaymentLoading(false);
         return;
       }
 
@@ -1439,7 +1535,25 @@ export default function CheckoutPage() {
                       </p>
                     </div>
                   ))}
+                  {getAddonLines().map(line => (
+                    <div key={line.addon} className="flex justify-between items-center border-b border-[#B8DCE7] pb-3">
+                      <div className="flex-1">
+                        <p className="font-medium text-sm text-[#063B5C]">🍳 {line.name}</p>
+                        <p className="text-xs text-[#315A6E]">{t('addons.total')} · {t('checkout.qty', { n: line.quantity })}</p>
+                      </div>
+                      <p className="font-semibold text-sm sm:text-base text-[#063B5C]">₹{(line.price * line.quantity).toFixed(2)}</p>
+                    </div>
+                  ))}
                 </div>
+
+                {displayItems.length > 0 && (
+                  <CheckoutAddons
+                    groups={addonGroups}
+                    quantities={addonQuantities}
+                    busyId={addonBusyId}
+                    onChange={handleAddonChange}
+                  />
+                )}
 
                 <div className="space-y-2">
                   {totalGrams(displayItems) > 0 && (

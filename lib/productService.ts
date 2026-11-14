@@ -26,6 +26,8 @@ interface GetProductsParams {
   sortOrder?: 'asc' | 'desc';
   page?: number;
   limit?: number;
+  /** Delivery location slug — prices for that location (server pages pass the cookie) */
+  location?: string;
 }
 
 export interface SearchProduct {
@@ -49,7 +51,8 @@ if (params?.category) queryParams.append('categorySlug', params.category);
     if (params?.sortOrder) queryParams.append('sortOrder', params.sortOrder);
     if (params?.page) queryParams.append('page', params.page.toString());
     if (params?.limit) queryParams.append('limit', params.limit.toString());
-    
+    if (params?.location) queryParams.append('location', params.location);
+
     const url = `${API_BASE_URL}/api/products${queryParams.toString() ? `?${queryParams}` : ''}`;
     console.log('📦 Fetching all products from:', url);
     
@@ -192,8 +195,34 @@ export async function getProductById(id: string): Promise<Product | null> {
   }
 }
 
+// Product priced for a delivery location (server pages read the location cookie).
+// The backend keeps the product even when it isn't sold there and marks it
+// isAvailableInLocation=false, so the page can say so instead of a 404.
+async function getProductForLocation(slugOrId: string, location: string): Promise<Product | null> {
+  const key = encodeURIComponent(decodeURIComponent(slugOrId));
+  const loc = encodeURIComponent(location);
+  const urls = [`${API_BASE_URL}/api/products/slug/${key}?location=${loc}`];
+  if (/^[a-fA-F0-9]{24}$/.test(slugOrId)) urls.push(`${API_BASE_URL}/api/products/${key}?location=${loc}`);
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, { cache: 'no-store' });
+      if (!response.ok) continue;
+      const data = await response.json();
+      if (data?.data) return data.data as Product;
+    } catch {
+      // try the next lookup
+    }
+  }
+  return null;
+}
+
 // Smart method that tries multiple strategies
-export async function getProductSmart(slugOrId: string): Promise<Product | null> {
+export async function getProductSmart(slugOrId: string, location?: string): Promise<Product | null> {
+  if (location) {
+    const priced = await getProductForLocation(slugOrId, location);
+    if (priced) return priced;
+  }
+
   console.log(`🎯 Smart lookup for: "${slugOrId}"`);
   
   // Strategy 1: Try as slug (search in all products)

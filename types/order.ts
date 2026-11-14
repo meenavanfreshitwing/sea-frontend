@@ -38,6 +38,10 @@ export interface Order {
 
   products: OrderItem[];
 
+  /** Masala & other add-ons (name/price as bought) */
+  addons?: { name: string; categoryName?: string; price: number; quantity: number }[];
+  addonsAmount?: number;
+
   shippingAddress: {
     name: string;            // ✅ NEW
     street: string;

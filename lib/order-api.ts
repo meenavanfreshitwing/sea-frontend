@@ -111,7 +111,11 @@ export async function createOrder(orderData: CreateOrderRequest): Promise<OrderR
     
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || 'Failed to create order');
+      // Keep the server's code (e.g. LOCATION_MISMATCH) and suggested location for the checkout page
+      const err = new Error(error.message || 'Failed to create order') as Error & { code?: string; location?: unknown };
+      err.code = error.code;
+      err.location = error.location;
+      throw err;
     }
 
     const data: OrderResponse = await response.json();

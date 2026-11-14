@@ -127,9 +127,11 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   };
 
   const itemCount = cart.totalItems || 0;
-  const subtotal = cart.totalPrice || 0;
+  // Masala add-ons chosen at checkout are included in the server's total
+  const addonsTotal = cart.addonsTotal || 0;
+  const subtotal = (cart.totalPrice || 0) - addonsTotal;
   // No tax: the backend charges the subtotal (delivery is free)
-  const total = subtotal;
+  const total = subtotal + addonsTotal;
 
   return (
     <>
@@ -326,6 +328,12 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                 <span className="text-[#315A6E]">{t('cart.subtotal', { n: itemCount })}</span>
                 <span className="text-[#063B5C] font-semibold">₹{subtotal.toFixed(2)}</span>
               </div>
+              {addonsTotal > 0 && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-[#315A6E]">🍳 {t('addons.total')}</span>
+                  <span className="text-[#063B5C] font-semibold">₹{addonsTotal.toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-xs">
                 <span className="text-[#315A6E]">{t('cart.delivery')}</span>
                 <span className="font-bold" style={{ color: '#008FB8' }}>{t('common.free')}</span>

@@ -17,11 +17,25 @@ export interface CartItem {
   updatedAt: string;
 }
 
+/** Masala & other extras picked at checkout (server carts only) */
+export interface CartAddon {
+  _id?: string;
+  addon: string;
+  name: string;
+  categoryName?: string;
+  price: number;
+  quantity: number;
+  image?: string | null;
+}
+
 export interface Cart {
   _id: string;
   user: string;
   guestId?: string;
   items: CartItem[];
+  addons?: CartAddon[];
+  /** Included in totalPrice */
+  addonsTotal?: number;
   totalPrice: number;
   totalItems: number;
   totalOriginalPrice?: number;

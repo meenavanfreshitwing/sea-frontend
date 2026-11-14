@@ -3,6 +3,8 @@ import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import { CartProvider } from '@/context/CartContext';
 import { LanguageProvider } from '@/context/LanguageContext';
+import { LocationProvider } from '@/context/LocationContext';
+import LocationBar from '@/components/location/LocationBar';
 import HeaderWrapper from '@/components/ui/HeaderWrapper';
 import AnnouncementBar from '@/components/AnnouncementBar';
 import Footer from '@/components/Footer';
@@ -31,9 +33,11 @@ export default function RootLayout({
       <body>
         <LanguageProvider>
         <AuthProvider>
+          <LocationProvider>
           <CartProvider>
             <HeaderWrapper />
             <AnnouncementBar />
+            <LocationBar />
             {children}
             <Footer />
             <BookingNoticePopup />
@@ -41,6 +45,7 @@ export default function RootLayout({
             <MobileCartBar />
             <SameLinkScrollTop />
           </CartProvider>
+          </LocationProvider>
         </AuthProvider>
         </LanguageProvider>
       </body>

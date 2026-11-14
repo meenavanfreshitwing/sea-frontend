@@ -13,6 +13,7 @@ import ProductReviews from '@/components/reviews/ProductReviews';
 import { Stars } from '@/components/reviews/StarRating';
 import { useLanguage } from '@/context/LanguageContext';
 import HelpLine from '@/components/HelpLine';
+import { useLocation } from '@/context/LocationContext';
 
 interface ClientProductDetailProps {
   product: Product;
@@ -342,6 +343,9 @@ const formatWeightDisplay = (weight: number, unit: string): string => {
 
 export default function ClientProductDetail({ product, randomProducts }: ClientProductDetailProps) {
   const { t } = useLanguage();
+  const { location: deliveryLocation, openPicker } = useLocation();
+  // The server marks fish not sold in the customer's location (location pricing)
+  const notSoldHere = (product as Product & { isAvailableInLocation?: boolean })?.isAvailableInLocation === false;
   const [quantity, setQuantity] = useState(1);
   const [showFloatingButton, setShowFloatingButton] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -708,6 +712,15 @@ export default function ClientProductDetail({ product, randomProducts }: ClientP
                 </div>
 
 {/* Quantity, then two equal buttons (same layout on phone and desktop) */}
+{notSoldHere ? (
+<div className="max-w-md space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4 pt-3" role="status">
+  <p className="font-semibold text-amber-900">{t('loc.notSoldHere', { name: deliveryLocation?.name || '' })}</p>
+  <p className="text-sm text-amber-800">{t('loc.notSoldHereHint')}</p>
+  <button type="button" onClick={openPicker} className="text-sm font-semibold text-[#008FB8] underline underline-offset-2">
+    {t('loc.change')}
+  </button>
+</div>
+) : (
 <div className="space-y-4 pt-2">
   {currentStock > 0 && (
     <div className="flex flex-wrap items-center gap-3">
@@ -768,6 +781,7 @@ export default function ClientProductDetail({ product, randomProducts }: ClientP
     <HelpLine />
   </div>
 </div>
+)}
 
                 {/* Product Details */}
                 <div className="space-y-3 pt-2">
@@ -844,9 +858,9 @@ export default function ClientProductDetail({ product, randomProducts }: ClientP
         </div>
 
         {/* Mobile Floating Button */}
-        {product && (
-          <MobileFloatingButton 
-            product={product} 
+        {product && !notSoldHere && (
+          <MobileFloatingButton
+            product={product}
             selectedVariant={selectedVariant}
             isVisible={showFloatingButton}
             onAddToCart={handleMobileAddToCart}

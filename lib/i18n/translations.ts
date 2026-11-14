@@ -455,6 +455,37 @@ const en = {
   'profile.orderAgainAdding': 'Adding to cart…',
   'profile.orderAgainSkipped': 'Some fish are sold out today and were not added.',
   'profile.orderAgainFailed': 'Could not add this order to your cart. Please try again.',
+
+  // ── Delivery location ──
+  'loc.title': 'Set your delivery location',
+  'loc.subtitle': 'Fish prices and availability depend on your area.',
+  'loc.confirmSaved': 'Deliver to {name} – {pincode}?',
+  'loc.confirm': 'Yes, continue',
+  'loc.useOther': 'Use a different location',
+  'loc.detect': 'Use my current location',
+  'loc.detecting': 'Detecting your location…',
+  'loc.or': 'or enter your pincode',
+  'loc.pincode': 'Pincode',
+  'loc.place': 'Area / Place',
+  'loc.placeHint': 'e.g. Sekkalai',
+  'loc.continue': 'Continue',
+  'loc.checking': 'Checking…',
+  'loc.badPincode': 'Please enter a valid 6-digit pincode.',
+  'loc.needPlace': 'Please enter your area or place.',
+  'loc.weServe': 'We deliver in: {names}',
+  'loc.deliveringTo': 'Delivering to',
+  'loc.change': 'Change',
+  'loc.close': 'Close',
+  'loc.notSoldHere': 'Not available in {name}',
+  'loc.notSoldHereHint': 'This fish is not sold in your area right now. Change your location or choose another fish.',
+
+  // ── Add-ons (masala) ──
+  'addons.title': 'Add masala to your order',
+  'addons.subtitle': 'Optional — added to your bill and delivered with your fish.',
+  'addons.add': 'Add',
+  'addons.total': 'Add-ons',
+  'addons.left': 'Only {n} left',
+  'addons.failed': 'Could not update the add-on. Please try again.',
 };
 
 export type TranslationKey = keyof typeof en;
@@ -894,6 +925,37 @@ const ta: Record<TranslationKey, string> = {
   'profile.orderAgainAdding': 'கூடையில் சேர்க்கிறது…',
   'profile.orderAgainSkipped': 'சில மீன்கள் இன்று விற்றுத் தீர்ந்ததால் சேர்க்கப்படவில்லை.',
   'profile.orderAgainFailed': 'இந்த ஆர்டரை கூடையில் சேர்க்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.',
+
+  // ── Delivery location ──
+  'loc.title': 'உங்கள் டெலிவரி இடத்தைத் தேர்வு செய்யுங்கள்',
+  'loc.subtitle': 'மீன் விலையும் கிடைப்பதும் உங்கள் பகுதியைப் பொறுத்தது.',
+  'loc.confirmSaved': '{name} – {pincode} க்கு டெலிவரி செய்யலாமா?',
+  'loc.confirm': 'ஆம், தொடரவும்',
+  'loc.useOther': 'வேறு இடம்',
+  'loc.detect': 'என் தற்போதைய இடத்தைப் பயன்படுத்து',
+  'loc.detecting': 'உங்கள் இடத்தைக் கண்டறிகிறது…',
+  'loc.or': 'அல்லது பின்கோடை உள்ளிடவும்',
+  'loc.pincode': 'பின்கோடு',
+  'loc.place': 'பகுதி / ஊர்',
+  'loc.placeHint': 'உதா. செக்காலை',
+  'loc.continue': 'தொடரவும்',
+  'loc.checking': 'சரிபார்க்கிறது…',
+  'loc.badPincode': 'சரியான 6 இலக்க பின்கோடை உள்ளிடவும்.',
+  'loc.needPlace': 'உங்கள் பகுதி அல்லது ஊரை உள்ளிடவும்.',
+  'loc.weServe': 'நாங்கள் டெலிவரி செய்யும் இடங்கள்: {names}',
+  'loc.deliveringTo': 'டெலிவரி இடம்',
+  'loc.change': 'மாற்று',
+  'loc.close': 'மூடு',
+  'loc.notSoldHere': '{name} இல் கிடைக்காது',
+  'loc.notSoldHereHint': 'இந்த மீன் இப்போது உங்கள் பகுதியில் விற்கப்படவில்லை. இடத்தை மாற்றவும் அல்லது வேறு மீனைத் தேர்வு செய்யவும்.',
+
+  // ── Add-ons (masala) ──
+  'addons.title': 'உங்கள் ஆர்டருடன் மசாலா சேர்க்கவும்',
+  'addons.subtitle': 'விருப்பம் — உங்கள் பில்லில் சேர்க்கப்பட்டு மீனுடன் டெலிவரி செய்யப்படும்.',
+  'addons.add': 'சேர்',
+  'addons.total': 'கூடுதல் பொருட்கள்',
+  'addons.left': '{n} மட்டுமே உள்ளது',
+  'addons.failed': 'மசாலாவைப் புதுப்பிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.',
 };
 
 export const translations: Record<Lang, Record<TranslationKey, string>> = { en, ta };
